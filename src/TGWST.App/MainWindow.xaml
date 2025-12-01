@@ -1,0 +1,18 @@
+<Window x:Class="TGWST.App.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:tabs="clr-namespace:TGWST.App.Tabs" Title="The Generic Windows Security Tool" Height="680" Width="1000" Icon="Assets/generic_windows_security_tool_icon.png">
+<Grid>
+<TabControl Margin="8">
+<TabItem Header="Hardening">
+<tabs:HardeningTab />
+</TabItem>
+<TabItem Header="Uninstall">
+<tabs:UninstallTab />
+</TabItem>
+<TabItem Header="Scan">
+<tabs:ScanTab />
+</TabItem>
+<TabItem Header="Network">
+<tabs:NetworkTab />
+</TabItem>
+</TabControl>
+</Grid>
+</Window>
