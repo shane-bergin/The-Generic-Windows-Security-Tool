@@ -1,0 +1,28 @@
+# Normalize text files to LF to avoid CRLF warnings
+* text=auto eol=lf
+
+*.cs      text eol=lf
+*.csproj  text eol=lf
+*.sln     text eol=lf
+*.xaml    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.ps1     text eol=lf
+*.psd1    text eol=lf
+*.psm1    text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.yar     text eol=lf
+
+# Binary files
+*.exe   binary
+*.dll   binary
+*.pdb   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.gif   binary
+*.zip   binary
+*.7z    binary

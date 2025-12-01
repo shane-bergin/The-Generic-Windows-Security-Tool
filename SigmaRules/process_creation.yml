@@ -1,0 +1,19 @@
+- title: TGWST Suspicious Process Creation via Loader
+  description: Detects cmd.exe spawned from suspicious loader binaries
+  tags: [attack.execution, T1059, tgwt]
+  detection:
+    selection:
+      NewProcessName: 'cmd.exe'
+      ParentProcessName|endswith:
+        - 'loader.exe'
+        - 'susp.dll'
+    condition: selection
+
+- title: TGWST PowerShell Obfuscation Chain
+  description: PS invocation post-loader
+  tags: [attack.execution, T1059.001]
+  detection:
+    selection:
+      NewProcessName: 'powershell.exe'
+      ParentProcessName: 'susp.exe'
+    condition: selection

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="dnYara" Version="2.1.0" />
+    <PackageReference Include="dnYara.NativePack" Version="2.1.0.3" GeneratePathProperty="true" ExcludeAssets="compile;runtime" />
+    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.4.5" />
+    <PackageReference Include="YamlDotNet" Version="15.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(PkgdnYara_NativePack)\lib\netstandard1.1\libyara.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\Rules.yar" LogicalName="TGWST.Core.Rules.yar" />
+    <EmbeddedResource Include="..\..\SigmaRules\process_creation.yml" LogicalName="TGWST.Core.SigmaRules.process_creation.yml" />
+  </ItemGroup>
+</Project>

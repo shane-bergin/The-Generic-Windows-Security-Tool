@@ -1,0 +1,15 @@
+# Build output
+**/bin/
+**/obj/
+**/TestResults/
+**/TestResult*/
+
+# Visual Studio settings
+.vs/
+*.user
+*.suo
+
+# Logs and temp files
+*.log
+*.tmp
+*.cache
