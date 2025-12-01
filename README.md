@@ -19,6 +19,16 @@ Runs standard uninstallers and removes leftover files/registry entries. Similar 
 
 Shows listening ports, allows port‑level blocking, and provides Fortress Mode, firewall reset, and threat blocklist controls.
 
+<img width="974" height="663" alt="image" src="https://github.com/user-attachments/assets/78421247-3c00-4d67-87a5-d9e97fd734a4" />
+
+<img width="964" height="655" alt="image" src="https://github.com/user-attachments/assets/7a397daf-23ef-4615-bb2a-2c440a3550da" />
+
+<img width="965" height="659" alt="image" src="https://github.com/user-attachments/assets/3d2269ae-59fe-4033-98db-ce78556a1d09" />
+
+<img width="968" height="658" alt="image" src="https://github.com/user-attachments/assets/5044c94a-e189-491c-8c27-3f9626c5ebbc" />
+
+
+
 ---
 
 # What It Is
