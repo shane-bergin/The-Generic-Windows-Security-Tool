@@ -16,14 +16,29 @@ public sealed class NetworkSecurityEngine
 {
 private static void RunCmd(string cmd)
 {
-using var p = Process.Start(new ProcessStartInfo
-{
-FileName = "cmd.exe",
-Arguments = "/c " + cmd,
-UseShellExecute = false,
-CreateNoWindow = true
-});
-p?.WaitForExit();
+    var psi = new ProcessStartInfo
+    {
+        FileName = "cmd.exe",
+        Arguments = "/c " + cmd,
+        UseShellExecute = false,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        CreateNoWindow = true
+    };
+
+    using var p = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start cmd.exe");
+    var stdout = p.StandardOutput.ReadToEnd();
+    var stderr = p.StandardError.ReadToEnd();
+    p.WaitForExit();
+
+    if (p.ExitCode != 0)
+    {
+        var error = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
+        var message = string.IsNullOrWhiteSpace(error)
+            ? $"Command failed with exit code {p.ExitCode}: {cmd}"
+            : $"Command failed with exit code {p.ExitCode}: {cmd} ({error.Trim()})";
+        throw new InvalidOperationException(message);
+    }
 }
 
 public void EnableFortressMode()
