@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Security.Principal;
 using TGWST.Core.Network;
 using MessageBox = System.Windows.MessageBox;
 
@@ -12,10 +13,27 @@ public partial class NetworkTab : System.Windows.Controls.UserControl
 {
 private readonly NetworkSecurityEngine _engine = new();
 private readonly System.Windows.Threading.DispatcherTimer _timer;
+private readonly bool _isAdmin;
 
 public NetworkTab()
 {
     InitializeComponent();
+    _isAdmin = IsAdministrator();
+
+    if (!_isAdmin)
+    {
+        StatusText.Text = "Admin rights required for firewall actions. View-only mode.";
+        MessageBox.Show(
+            "Administrator rights are required to change Windows Firewall or apply threat blocklists. Please restart the app as Administrator.",
+            "Administrator required",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+    else
+    {
+        StatusText.Text = "Ready";
+    }
+
     RefreshPorts();
 
     _timer = new System.Windows.Threading.DispatcherTimer
@@ -34,6 +52,7 @@ private void RefreshPorts()
 
 private void Fortress_Click(object sender, RoutedEventArgs e)
 {
+    if (!EnsureAdminForAction()) return;
     try
     {
         StatusText.Text = "Enabling fortress mode (block inbound, allow outbound)...";
@@ -49,6 +68,7 @@ private void Fortress_Click(object sender, RoutedEventArgs e)
 
 private void ResetFw_Click(object sender, RoutedEventArgs e)
 {
+    if (!EnsureAdminForAction()) return;
     try
     {
         StatusText.Text = "Resetting Windows Firewall to defaults...";
@@ -64,6 +84,7 @@ private void ResetFw_Click(object sender, RoutedEventArgs e)
 
 private async void Blocklists_Click(object sender, RoutedEventArgs e)
 {
+    if (!EnsureAdminForAction()) return;
     StatusText.Text = "Applying threat blocklists...";
     var progress = new Progress<string>(msg => StatusText.Text = msg);
 
@@ -80,6 +101,7 @@ private async void Blocklists_Click(object sender, RoutedEventArgs e)
 
 private void RemoveBlocklists_Click(object sender, RoutedEventArgs e)
 {
+    if (!EnsureAdminForAction()) return;
     StatusText.Text = "Removing TGWST threat block rules...";
     _engine.RemoveThreatBlocklistRules();
         StatusText.Text = "Threat block rules removed.";
@@ -87,6 +109,7 @@ private void RemoveBlocklists_Click(object sender, RoutedEventArgs e)
 
 private void Block_Click(object sender, RoutedEventArgs e)
 {
+    if (!EnsureAdminForAction()) return;
     if ((sender as FrameworkElement)?.DataContext is not PortInfo port) return;
     try
     {
@@ -97,6 +120,25 @@ private void Block_Click(object sender, RoutedEventArgs e)
     {
         StatusText.Text = $"Failed to block port: {ex.Message}";
     }
+}
+
+private bool EnsureAdminForAction()
+{
+    if (_isAdmin) return true;
+
+    MessageBox.Show(
+        "This action requires Administrator rights. Please restart the app as Administrator.",
+        "Administrator required",
+        MessageBoxButton.OK,
+        MessageBoxImage.Warning);
+    return false;
+}
+
+private static bool IsAdministrator()
+{
+    using var identity = WindowsIdentity.GetCurrent();
+    var principal = new WindowsPrincipal(identity);
+    return principal.IsInRole(WindowsBuiltInRole.Administrator);
 }
 
 }

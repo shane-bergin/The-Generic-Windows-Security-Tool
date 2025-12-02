@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
+using System.Linq;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Security.Cryptography;
@@ -17,22 +18,21 @@ public sealed class ClamEngine
     private const string DefaultClamDir = @"C:\ProgramData\TGWST\ClamAV";
     private const string ClamZipSha256 = "2644A778016D3B4F64CBB0B5B4D8D1236E6F65813329FD93ECDD57D968F85D0";
     private readonly string _clamDir;
-    private readonly string _clamExe;
-    private readonly string _freshExe;
+    private string? _clamExe;
+    private string? _freshExe;
     private readonly string _dbDir;
     private static readonly string ClamZipUrl = "https://www.clamav.net/downloads/production/clamav-1.5.1.win.x64.zip";
 
     public ClamEngine()
     {
         _clamDir = ResolveClamDirectory();
-        _clamExe = Path.Combine(_clamDir, "clamscan.exe");
-        _freshExe = Path.Combine(_clamDir, "freshclam.exe");
         _dbDir = Path.Combine(_clamDir, "db");
+        RefreshBinaryPaths();
     }
 
     public async Task<bool> EnsureInstalledAsync(IProgress<string>? log = null, CancellationToken ct = default)
     {
-        var present = File.Exists(_clamExe) && File.Exists(_freshExe);
+        var present = ClamBinariesPresent();
         if (present) return true;
 
         try
@@ -68,19 +68,20 @@ public sealed class ClamEngine
             ZipFile.ExtractToDirectory(zipPath, _clamDir, overwriteFiles: true);
             File.Delete(zipPath);
             HardenDirectory(_clamDir);
+            RefreshBinaryPaths();
         }
         catch
         {
             return false;
         }
 
-        return File.Exists(_clamExe) && File.Exists(_freshExe);
+        return ClamBinariesPresent();
     }
 
     public async Task<IReadOnlyList<ScanResult>> RunClamScanAsync(string root, IProgress<string>? log = null, CancellationToken ct = default)
     {
         var installed = await EnsureInstalledAsync(log, ct);
-        if (!installed)
+        if (!installed || string.IsNullOrWhiteSpace(_clamExe) || string.IsNullOrWhiteSpace(_freshExe))
         {
             return new[]
             {
@@ -113,7 +114,7 @@ public sealed class ClamEngine
 
         var psi = new ProcessStartInfo
         {
-            FileName = _clamExe,
+            FileName = _clamExe!,
             Arguments = $"--database=\"{_dbDir}\" -r \"{root}\" --no-summary --infected",
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -141,6 +142,37 @@ public sealed class ClamEngine
             }).ToArray();
 
         return hits;
+    }
+
+    private void RefreshBinaryPaths()
+    {
+        _clamExe = LocateBinary("clamscan.exe");
+        _freshExe = LocateBinary("freshclam.exe");
+    }
+
+    private string? LocateBinary(string fileName)
+    {
+        try
+        {
+            var direct = Path.Combine(_clamDir, fileName);
+            if (File.Exists(direct)) return direct;
+
+            return Directory.EnumerateFiles(_clamDir, fileName, SearchOption.AllDirectories)
+                .FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private bool ClamBinariesPresent()
+    {
+        if (string.IsNullOrWhiteSpace(_clamExe) || string.IsNullOrWhiteSpace(_freshExe))
+            RefreshBinaryPaths();
+
+        return !string.IsNullOrWhiteSpace(_clamExe) && File.Exists(_clamExe)
+               && !string.IsNullOrWhiteSpace(_freshExe) && File.Exists(_freshExe);
     }
 
     private static void HardenDirectory(string path)

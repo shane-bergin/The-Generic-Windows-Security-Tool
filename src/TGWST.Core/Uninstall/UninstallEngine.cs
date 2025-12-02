@@ -52,44 +52,18 @@ var apps = new List<InstalledApp>();
 
 public Task RunUninstallerAsync(InstalledApp app, bool quiet = true, CancellationToken ct = default)
 {
-    var uninstall = app.UninstallString;
-    string fileName;
-    string arguments;
+    var (fileName, arguments, isMsiexec) = ParseCommandLine(app.UninstallString);
+    if (string.IsNullOrWhiteSpace(fileName))
+        throw new InvalidOperationException($"Invalid uninstall command for {app.DisplayName}.");
 
-    if (uninstall.StartsWith("msiexec", StringComparison.OrdinalIgnoreCase))
+    if (isMsiexec)
     {
-        fileName = "msiexec.exe";
-        arguments = uninstall["msiexec".Length..].Trim();
-        if (quiet && !arguments.Contains("/quiet", StringComparison.OrdinalIgnoreCase))
-            arguments += " /quiet";
+        if (quiet && !ContainsMsiQuiet(arguments))
+            arguments = string.IsNullOrWhiteSpace(arguments) ? "/quiet" : arguments + " /quiet";
     }
-    else
+    else if (quiet && !arguments.Contains("/S", StringComparison.OrdinalIgnoreCase))
     {
-        var trimmed = uninstall.Trim();
-
-        if (trimmed.StartsWith("\"", StringComparison.Ordinal))
-        {
-            var secondQuote = trimmed.IndexOf('"', 1);
-            fileName = trimmed.Substring(1, secondQuote - 1);
-            arguments = trimmed[(secondQuote + 1)..].Trim();
-        }
-        else
-        {
-            var firstSpace = trimmed.IndexOf(' ');
-            if (firstSpace > 0)
-            {
-                fileName = trimmed[..firstSpace];
-                arguments = trimmed[(firstSpace + 1)..];
-            }
-            else
-            {
-                fileName = trimmed;
-                arguments = "";
-            }
-        }
-
-        if (quiet && !arguments.Contains("/S", StringComparison.OrdinalIgnoreCase))
-            arguments += " /S";
+        arguments = string.IsNullOrWhiteSpace(arguments) ? "/S" : arguments + " /S";
     }
 
     var psi = new ProcessStartInfo
@@ -103,6 +77,56 @@ public Task RunUninstallerAsync(InstalledApp app, bool quiet = true, Cancellatio
     if (p == null) return Task.CompletedTask;
     return p.WaitForExitAsync(ct);
 }
+
+private static (string fileName, string arguments, bool isMsiexec) ParseCommandLine(string? commandLine)
+{
+    var trimmed = (commandLine ?? string.Empty).Trim();
+    if (trimmed.Length == 0)
+        return ("", "", false);
+
+    string fileName;
+    string arguments;
+
+    if (trimmed.StartsWith("\"", StringComparison.Ordinal))
+    {
+        var closingQuote = trimmed.IndexOf('"', 1);
+        if (closingQuote > 1)
+        {
+            fileName = trimmed.Substring(1, closingQuote - 1);
+            arguments = trimmed[(closingQuote + 1)..].Trim();
+        }
+        else
+        {
+            fileName = trimmed.Trim('"');
+            arguments = "";
+        }
+    }
+    else
+    {
+        var firstSpace = trimmed.IndexOf(' ');
+        if (firstSpace > 0)
+        {
+            fileName = trimmed[..firstSpace];
+            arguments = trimmed[(firstSpace + 1)..].Trim();
+        }
+        else
+        {
+            fileName = trimmed;
+            arguments = "";
+        }
+    }
+
+    var isMsiexec = Path.GetFileNameWithoutExtension(fileName)
+        .Equals("msiexec", StringComparison.OrdinalIgnoreCase);
+    if (isMsiexec)
+        fileName = "msiexec.exe";
+
+    return (fileName, arguments, isMsiexec);
+}
+
+private static bool ContainsMsiQuiet(string arguments) =>
+    arguments.Contains("/quiet", StringComparison.OrdinalIgnoreCase) ||
+    arguments.Contains("/qn", StringComparison.OrdinalIgnoreCase);
 
 public async Task<IReadOnlyList<LeftoverItem>> FindLeftoversAsync(
     InstalledApp app,
