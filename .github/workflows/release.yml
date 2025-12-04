@@ -1,40 +1,50 @@
 name: Release
 
 on:
-push:
-tags:
-- 'v*'
+  push:
+    tags:
+      - 'v*'
 
 jobs:
-release:
-runs-on: windows-latest
+  release:
+    runs-on: windows-latest
 
-steps:
-  - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-  - uses: actions/setup-dotnet@v4
-    with:
-      dotnet-version: '8.0.x'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-  - run: dotnet restore TGWST.sln
+      - run: dotnet restore TGWST.sln
 
-  - run: >
-      dotnet publish src/TGWST.App/TGWST.App.csproj
-      -c Release
-      -r win-x64
-      --self-contained true
-      /p:PublishSingleFile=true
-      /p:IncludeAllContentForSelfExtract=true
-      /p:PublishTrimmed=false
-      -o publish
+      - run: >
+          dotnet publish src/TGWST.App/TGWST.App.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          /p:PublishSingleFile=true
+          /p:IncludeAllContentForSelfExtract=true
+          /p:PublishTrimmed=false
+          -o publish
 
-  - run: ren publish\TGWST.App.exe TGWST.exe
+      - run: ren publish\TGWST.App.exe TGWST.exe
 
-  - uses: softprops/action-gh-release@v2
-    with:
-      files: publish/TGWST.exe
-      name: ${{ github.ref_name }}
-      body: |
-        TGWST ${{ github.ref_name }} – ASR hardening, residual cleanup, YARA/Sigma/Clam triad, network fortress.
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install WiX Toolset
+        run: choco install wixtoolset -y
+        shell: powershell
+
+      - name: Build MSI
+        run: powershell -ExecutionPolicy Bypass -File installer/build-msi.ps1
+        shell: powershell
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            publish/TGWST.exe
+            installer/TGWST.Setup.msi
+          name: ${{ github.ref_name }}
+          body: |
+            TGWST ${{ github.ref_name }} - ASR hardening, residual cleanup, YARA/Sigma/Clam triad, network fortress.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

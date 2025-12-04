@@ -5,8 +5,10 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using TGWST.Core.Feeds;
 using TGWST.Core.Scan;
 using MessageBox = System.Windows.MessageBox;
+using FeedIocBundle = TGWST.Core.Feeds.IocBundle;
 
 namespace TGWST.App.Tabs;
 
@@ -15,12 +17,16 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
     private readonly ScanEngine _engine = new();
     public ObservableCollection<ScanResult> Results { get; } = new();
     public ObservableCollection<IocBundleView> IocBundles { get; } = new();
+    public ThreatFeedsViewModel ThreatFeeds { get; } = new();
 
     private string _status = "Ready";
     public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
 
     private string _logText = "";
     public string LogText { get => _logText; set { _logText = value; OnPropertyChanged(); } }
+
+    private bool _useClamAv = true;
+    public bool UseClamAv { get => _useClamAv; set { _useClamAv = value; OnPropertyChanged(); } }
 
     private double _progress;
     public double Progress { get => _progress; set { _progress = value; OnPropertyChanged(); } }
@@ -30,12 +36,6 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
 
     private bool _progressIndeterminate;
     public bool ProgressIndeterminate { get => _progressIndeterminate; set { _progressIndeterminate = value; OnPropertyChanged(); } }
-
-    private int _yaraFeedCount;
-    public int YaraFeedCount { get => _yaraFeedCount; set { _yaraFeedCount = value; OnPropertyChanged(); } }
-
-    private int _iocBundleCount;
-    public int IocBundleCount { get => _iocBundleCount; set { _iocBundleCount = value; OnPropertyChanged(); } }
 
     public ScanTab()
     {
@@ -79,7 +79,7 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
                 }
             });
 
-            var hits = await _engine.RunScanAsync(type, root, progress, textLog);
+            var hits = await _engine.RunScanAsync(type, root, progress, textLog, UseClamAv);
 
             foreach (var hit in hits) Results.Add(hit);
             Status = $"{Results.Count} hits";
@@ -103,22 +103,14 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
     {
         try
         {
-            var feeds = await Task.Run(() =>
-            {
-                var yara = IocFeedLoader.GetYaraRuleFiles();
-                var bundles = IocFeedLoader.GetIocBundles();
-                return (yara, bundles);
-            });
-
-            YaraFeedCount = feeds.yara.Count;
+            var summary = await ThreatFeeds.ReloadAsync();
 
             IocBundles.Clear();
-            foreach (var b in feeds.bundles)
+            foreach (var b in FeedManager.IocBundles)
             {
                 IocBundles.Add(new IocBundleView(b));
             }
-            IocBundleCount = feeds.bundles.Count;
-            Status = $"Feeds: {YaraFeedCount} YARA, {IocBundleCount} IOC bundles";
+            Status = $"Feeds: {ThreatFeeds.YaraRuleCount} YARA rules, {ThreatFeeds.IocBundleCount} IOC bundles";
         }
         catch (Exception ex)
         {
@@ -143,12 +135,47 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
         public int DomainCount { get; }
         public int FilenameCount { get; }
 
-        public IocBundleView(IocBundle bundle)
+        public IocBundleView(FeedIocBundle bundle)
         {
             Family = string.IsNullOrWhiteSpace(bundle.Family) ? "(unknown)" : bundle.Family;
-            MutexCount = bundle.Mutexes?.Length ?? 0;
-            DomainCount = bundle.Domains?.Length ?? 0;
-            FilenameCount = bundle.Filenames?.Length ?? 0;
+            MutexCount = bundle.Mutexes?.Count ?? 0;
+            DomainCount = bundle.Domains?.Count ?? 0;
+            FilenameCount = bundle.Filenames?.Count ?? 0;
         }
     }
+}
+
+public sealed class ThreatFeedsViewModel : INotifyPropertyChanged
+{
+    private int _yaraRuleCount;
+    public int YaraRuleCount { get => _yaraRuleCount; private set { _yaraRuleCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(LastReloadDisplay)); } }
+
+    private int _iocBundleCount;
+    public int IocBundleCount { get => _iocBundleCount; private set { _iocBundleCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(LastReloadDisplay)); } }
+
+    private int _totalFamilies;
+    public int TotalFamilies { get => _totalFamilies; private set { _totalFamilies = value; OnPropertyChanged(); OnPropertyChanged(nameof(LastReloadDisplay)); } }
+
+    private DateTime? _reloadedAtLocal;
+    public DateTime? ReloadedAtLocal { get => _reloadedAtLocal; private set { _reloadedAtLocal = value; OnPropertyChanged(); OnPropertyChanged(nameof(LastReloadDisplay)); } }
+
+    public string LastReloadDisplay => ReloadedAtLocal.HasValue ? $"Reloaded {ReloadedAtLocal.Value:G}" : "";
+
+    public ObservableCollection<string> Families { get; } = new();
+
+    public async Task<FeedSummary> ReloadAsync()
+    {
+        var summary = await FeedManager.ReloadAsync().ConfigureAwait(true);
+        Families.Clear();
+        foreach (var f in summary.Families) Families.Add(f);
+        YaraRuleCount = summary.YaraRuleCount;
+        IocBundleCount = summary.IocBundleCount;
+        TotalFamilies = summary.TotalFamilies;
+        ReloadedAtLocal = summary.ReloadedAtUtc.ToLocalTime();
+        return summary;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

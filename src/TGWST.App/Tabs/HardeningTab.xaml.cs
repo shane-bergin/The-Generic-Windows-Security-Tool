@@ -30,7 +30,7 @@ public partial class HardeningTab : System.Windows.Controls.UserControl
         try
         {
             var profile = _engine.GetProfile(level);
-            if (profile.ControlledFolderAccessOn)
+            if (profile.ShowCfaWarning)
             {
                 MessageBox.Show(
                     "To change Controlled Folder Access, Windows Tamper Protection must be disabled.\n\nStart -> Windows Security -> Virus & threat protection -> Manage ransomware protection -> Tamper Protection.\n\nThis app cannot change Tamper Protection.",

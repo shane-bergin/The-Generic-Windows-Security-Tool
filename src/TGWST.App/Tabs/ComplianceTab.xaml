@@ -1,18 +1,33 @@
-<UserControl x:Class="TGWST.App.Tabs.ComplianceTab" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<UserControl x:Class="TGWST.App.Tabs.ComplianceTab" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:conv="clr-namespace:TGWST.App.Converters">
+    <UserControl.Resources>
+        <conv:NullToBoolConverter x:Key="NullToBool"/>
+    </UserControl.Resources>
     <Grid Margin="8">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBox x:Name="BaselinePathBox" Width="400" Margin="0,0,8,0" />
-            <Button Content="Evaluate" Click="Evaluate_Click"/>
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,0,8"
+                   TextWrapping="Wrap"
+                   Text="Select a compliance baseline and click Evaluate to compare system settings to the expected values."/>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
+            <ComboBox
+                      ItemsSource="{Binding Baselines}"
+                      DisplayMemberPath="DisplayName"
+                      SelectedItem="{Binding SelectedBaseline, Mode=TwoWay}"
+                      Width="320"
+                      Margin="0,0,8,0"/>
+            <Button Content="Browse..." Margin="0,0,8,0" Click="Browse_Click"/>
+            <Button Content="Evaluate" Click="Evaluate_Click" IsEnabled="{Binding SelectedBaseline, Converter={StaticResource NullToBool}}"/>
         </StackPanel>
 
-        <DataGrid x:Name="ResultsGrid"
-                  Grid.Row="1"
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding Results}"
                   AutoGenerateColumns="False"
                   IsReadOnly="True">
             <DataGrid.Columns>
@@ -25,6 +40,6 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <TextBlock x:Name="StatusText" Grid.Row="2" Margin="0,8,0,0" Text="Ready"/>
+        <TextBlock Grid.Row="3" Margin="0,8,0,0" Text="{Binding Status}"/>
     </Grid>
 </UserControl>

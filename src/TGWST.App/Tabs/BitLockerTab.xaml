@@ -1,31 +1,45 @@
-<UserControl x:Class="TGWST.App.Tabs.BitLockerTab" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<UserControl x:Class="TGWST.App.Tabs.BitLockerTab" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:conv="clr-namespace:TGWST.App.Converters">
+    <UserControl.Resources>
+        <conv:NullToBoolConverter x:Key="NullToBool"/>
+    </UserControl.Resources>
     <Grid Margin="8">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBox x:Name="DriveLetterBox" Width="60" Margin="0,0,8,0" ToolTip="Drive letter"/>
-            <TextBox x:Name="PinBox" Width="120" Margin="0,0,8,0" ToolTip="PIN or password"/>
-            <TextBox x:Name="RecoveryDirBox" Width="200" Margin="0,0,8,0" ToolTip="Recovery key output directory"/>
-            <Button Content="Status" Click="Status_Click" Margin="0,0,8,0"/>
-            <Button Content="Enable OS" Click="EnableOs_Click" Margin="0,0,8,0"/>
-            <Button Content="Enable Fixed" Click="EnableFixed_Click" Margin="0,0,8,0"/>
-            <Button Content="Enable Removable" Click="EnableRemovable_Click" Margin="0,0,8,0"/>
-        </StackPanel>
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,0,8"
+                   TextWrapping="Wrap"
+                   Text="Manage BitLocker on OS, fixed, and removable drives. Select a drive, then use Status/Enable/Suspend/Resume."/>
 
         <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
-            <Button Content="Suspend" Click="Suspend_Click" Margin="0,0,8,0"/>
-            <Button Content="Resume" Click="Resume_Click" Margin="0,0,8,0"/>
-            <Button Content="Add Recovery Key" Click="AddRecovery_Click" Margin="0,0,8,0"/>
+            <ComboBox
+                      ItemsSource="{Binding Drives}"
+                      DisplayMemberPath="Label"
+                      SelectedItem="{Binding SelectedDrive, Mode=TwoWay}"
+                      Width="250"
+                      Margin="0,0,8,0"/>
+            <TextBox Width="120" Margin="0,0,8,0" ToolTip="PIN or password" Text="{Binding Pin, Mode=TwoWay}"/>
+            <TextBox Width="200" Margin="0,0,8,0" ToolTip="Recovery key output directory" Text="{Binding RecoveryDirectory, Mode=TwoWay}"/>
+            <Button Content="Status" Click="Status_Click" Margin="0,0,8,0" IsEnabled="{Binding SelectedDrive, Converter={StaticResource NullToBool}}"/>
+            <Button Content="Enable OS" Click="EnableOs_Click" Margin="0,0,8,0" IsEnabled="{Binding SelectedDrive, Converter={StaticResource NullToBool}}"/>
+            <Button Content="Enable Fixed" Click="EnableFixed_Click" Margin="0,0,8,0" IsEnabled="{Binding SelectedDrive, Converter={StaticResource NullToBool}}"/>
+            <Button Content="Enable Removable" Click="EnableRemovable_Click" Margin="0,0,8,0" IsEnabled="{Binding SelectedDrive, Converter={StaticResource NullToBool}}"/>
         </StackPanel>
 
-        <TextBox x:Name="OutputBox"
-                 Grid.Row="2"
+        <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,8">
+            <Button Content="Suspend" Click="Suspend_Click" Margin="0,0,8,0" IsEnabled="{Binding SelectedDrive, Converter={StaticResource NullToBool}}"/>
+            <Button Content="Resume" Click="Resume_Click" Margin="0,0,8,0" IsEnabled="{Binding SelectedDrive, Converter={StaticResource NullToBool}}"/>
+            <Button Content="Add Recovery Key" Click="AddRecovery_Click" Margin="0,0,8,0" IsEnabled="{Binding SelectedDrive, Converter={StaticResource NullToBool}}"/>
+        </StackPanel>
+
+        <TextBox Grid.Row="3"
                  IsReadOnly="True"
                  TextWrapping="Wrap"
-                 VerticalScrollBarVisibility="Auto"/>
+                 VerticalScrollBarVisibility="Auto"
+                 Text="{Binding OutputText}"/>
     </Grid>
 </UserControl>

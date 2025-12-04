@@ -7,4 +7,6 @@ public string Publisher { get; init; } = "";
 public string UninstallString { get; init; } = "";
 public bool IsStoreApp { get; init; }
 public string? ProductCode { get; init; }
+public string? InstallLocation { get; init; }
+public string? InstallSource { get; init; }
 }

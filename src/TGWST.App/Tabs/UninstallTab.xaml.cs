@@ -58,7 +58,11 @@ public partial class UninstallTab : System.Windows.Controls.UserControl, INotify
             await _engine.RunUninstallerAsync(app);
             Status = "Scanning for leftovers...";
 
-            _leftovers = (await _engine.FindLeftoversAsync(app)).ToList();
+            _leftovers = (await _engine.FindLeftoversAsync(app)).Select(l =>
+            {
+                l.Selected = false;
+                return l;
+            }).ToList();
             OnPropertyChanged(nameof(Leftovers));
             Status = $"Found {_leftovers.Count} potential leftovers.";
         }
@@ -70,14 +74,17 @@ public partial class UninstallTab : System.Windows.Controls.UserControl, INotify
 
     private async void RemoveLeftovers_Click(object sender, RoutedEventArgs e)
     {
-        if (_leftovers.Count == 0)
+        var selected = _leftovers.Where(l => l.Selected).ToList();
+        if (selected.Count == 0)
         {
-            Status = "No leftovers to remove.";
+            Status = "Select leftovers to remove.";
             return;
         }
 
         var confirm = MessageBox.Show(
-            "Remove detected leftovers? This will delete directories and registry keys that match the app name.",
+            DryRunCheck.IsChecked == true
+                ? "Dry run: show what would be removed?"
+                : "Remove selected leftovers? This will delete the selected directories.",
             "Confirm removal",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -89,11 +96,18 @@ public partial class UninstallTab : System.Windows.Controls.UserControl, INotify
 
         try
         {
-            Status = "Removing leftovers...";
-            await _engine.RemoveLeftoversAsync(_leftovers, CancellationToken.None);
-            _leftovers = Array.Empty<LeftoverItem>();
-            OnPropertyChanged(nameof(Leftovers));
-            Status = "Leftovers removal complete.";
+            if (DryRunCheck.IsChecked == true)
+            {
+                Status = $"Dry run: would remove {selected.Count} items.";
+            }
+            else
+            {
+                Status = "Removing leftovers...";
+                await _engine.RemoveLeftoversAsync(selected, CancellationToken.None);
+                _leftovers = _leftovers.Except(selected).ToList();
+                OnPropertyChanged(nameof(Leftovers));
+                Status = "Leftovers removal complete.";
+            }
         }
         catch (Exception ex)
         {

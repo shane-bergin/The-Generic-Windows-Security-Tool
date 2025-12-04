@@ -3,20 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using TGWST.Core.Feeds;
 
 namespace TGWST.Core.Scan;
 
 public static class IocFeedLoader
 {
-    private static readonly string YaraDir = @"C:\ProgramData\TGWST\Feeds\Yara";
-    private static readonly string IocDir = @"C:\ProgramData\TGWST\Feeds\Iocs";
-
     public static IReadOnlyList<string> GetYaraRuleFiles()
     {
         try
         {
-            Directory.CreateDirectory(YaraDir);
-            return Directory.EnumerateFiles(YaraDir, "*.yar", SearchOption.TopDirectoryOnly).ToArray();
+            FeedPaths.EnsureDirectoriesExist();
+            return Directory.EnumerateFiles(FeedPaths.Yara, "*.yar", SearchOption.TopDirectoryOnly).ToArray();
         }
         catch
         {
@@ -29,8 +27,8 @@ public static class IocFeedLoader
         var list = new List<IocBundle>();
         try
         {
-            Directory.CreateDirectory(IocDir);
-            var files = Directory.EnumerateFiles(IocDir, "*.json", SearchOption.TopDirectoryOnly);
+            FeedPaths.EnsureDirectoriesExist();
+            var files = Directory.EnumerateFiles(FeedPaths.Iocs, "*.json", SearchOption.TopDirectoryOnly);
             foreach (var file in files)
             {
                 try

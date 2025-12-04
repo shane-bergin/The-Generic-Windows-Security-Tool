@@ -40,10 +40,10 @@ public HardeningProfile GetProfile(HardeningProfileLevel level)
 {
     HardeningProfile baseProfile = level switch
     {
-        HardeningProfileLevel.Balanced   => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = true, ControlledFolderAccessOn = false, SmartScreenOn = true },
-        HardeningProfileLevel.Aggressive => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = true, ControlledFolderAccessOn = true,  SmartScreenOn = true },
-        HardeningProfileLevel.Audit      => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = true, ControlledFolderAccessOn = false, SmartScreenOn = true },
-        HardeningProfileLevel.Revert     => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = false, ControlledFolderAccessOn = false, SmartScreenOn = true },
+        HardeningProfileLevel.Balanced   => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = true, ControlledFolderAccessOn = false, ShowCfaWarning = false },
+        HardeningProfileLevel.Aggressive => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = true, ControlledFolderAccessOn = true,  ShowCfaWarning = true },
+        HardeningProfileLevel.Audit      => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = true, ControlledFolderAccessOn = false, ShowCfaWarning = false },
+        HardeningProfileLevel.Revert     => new() { Level = level, DefenderRealtimeOn = true, NetworkProtectionOn = false, ControlledFolderAccessOn = false, ShowCfaWarning = false },
         _ => throw new ArgumentOutOfRangeException(nameof(level))
     };
 

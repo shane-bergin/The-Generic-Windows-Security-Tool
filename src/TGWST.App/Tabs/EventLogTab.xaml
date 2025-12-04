@@ -2,22 +2,30 @@
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Lookback:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <ComboBox x:Name="LookbackCombo" Width="140" SelectedIndex="1">
-                <ComboBoxItem Content="1 hour" Tag="1"/>
-                <ComboBoxItem Content="24 hours" Tag="24"/>
-                <ComboBoxItem Content="7 days" Tag="168"/>
-            </ComboBox>
-            <Button Content="Scan Events" Margin="8,0,0,0" Click="Scan_Click"/>
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,0,8"
+                   TextWrapping="Wrap"
+                   Text="Scan recent Windows event logs for suspicious or security-relevant activity. Choose a lookback period and click Scan Events."/>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <TextBlock Text="Lookback:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox Width="160"
+                          ItemsSource="{Binding LookbackChoices}"
+                          DisplayMemberPath="Name"
+                          SelectedItem="{Binding SelectedLookbackChoice, Mode=TwoWay}"/>
+                <Button Content="Scan Events" Margin="8,0,0,0" Click="Scan_Click"/>
+            </StackPanel>
+            <TextBlock Text="{Binding RunContextDescription}" FontStyle="Italic" FontSize="12"/>
         </StackPanel>
 
-        <DataGrid x:Name="FindingsGrid"
-                  Grid.Row="1"
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding Findings}"
                   AutoGenerateColumns="False"
                   IsReadOnly="True">
             <DataGrid.Columns>
@@ -29,9 +37,8 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <TextBlock x:Name="StatusText"
-                   Grid.Row="2"
+        <TextBlock Grid.Row="3"
                    Margin="0,8,0,0"
-                   Text="Idle"/>
+                   Text="{Binding Status}"/>
     </Grid>
 </UserControl>
