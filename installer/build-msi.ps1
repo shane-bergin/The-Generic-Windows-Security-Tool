@@ -115,6 +115,7 @@ try {
     $msiOutput = Join-Path $OutputDir "TGWST.Setup.msi"
     $wxsFile = Join-Path $OutputDir "TGWST.Installer.wxs"
     $iconPath = Join-Path $repoRoot "src\TGWST.App\Assets\generic_windows_security_tool_icon.png"
+    $licenseRtf = Join-Path $PSScriptRoot "MIT_LICENSE.rtf"
 
     Ensure-CleanDir -path $publishDir
     Ensure-CleanDir -path $stageDir
@@ -177,6 +178,7 @@ try {
         -dProductVersion="$productVersion" `
         -dAppExeName="$exeName" `
         -dIconPath="$iconPath" `
+        -dLicenseRtf="$licenseRtf" `
         -out "$objDir\" `
         $wxsFile `
         $harvestFile `
