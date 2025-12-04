@@ -1,0 +1,17 @@
+<UserControl x:Class="TGWST.App.Tabs.DriftTab" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBox x:Name="BaselineBox" Width="400" Margin="0,0,8,0" />
+            <TextBox x:Name="IntervalBox" Width="80" Margin="0,0,8,0" Text="300" ToolTip="Seconds"/>
+            <Button Content="Start" Click="Start_Click" Margin="0,0,8,0"/>
+            <Button Content="Stop" Click="Stop_Click"/>
+        </StackPanel>
+
+        <TextBlock x:Name="StatusText" Grid.Row="1" Text="Idle"/>
+    </Grid>
+</UserControl>

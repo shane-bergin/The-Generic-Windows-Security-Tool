@@ -36,18 +36,41 @@
         </DataGrid.Columns>
     </DataGrid>
 
-    <GroupBox Header="Scan log" Grid.Row="2" Margin="0,8,0,0">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <TextBox Text="{Binding LogText}"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     FontFamily="Consolas"
-                     VerticalScrollBarVisibility="Auto"/>
-        </ScrollViewer>
-    </GroupBox>
+        <GroupBox Header="Scan log" Grid.Row="2" Margin="0,8,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBox Text="{Binding LogText}"
+                         IsReadOnly="True"
+                         TextWrapping="Wrap"
+                         FontFamily="Consolas"
+                         VerticalScrollBarVisibility="Auto"/>
+            </ScrollViewer>
+        </GroupBox>
 
-    <TextBlock Grid.Row="3"
-               Text="{Binding Status}"
-               Margin="0,8,0,0"/>
+    <Grid Grid.Row="3" Margin="0,8,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Status}" VerticalAlignment="Center"/>
+            <Button Content="Reload Feeds" Margin="8,0,0,0" Click="ReloadFeeds_Click"/>
+            <TextBlock Text="{Binding YaraFeedCount, StringFormat='YARA feeds: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding IocBundleCount, StringFormat='IOC bundles: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <GroupBox Header="IOC Feeds" Grid.Row="1" Margin="0,8,0,0">
+            <DataGrid ItemsSource="{Binding IocBundles}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Family" Binding="{Binding Family}" Width="*"/>
+                    <DataGridTextColumn Header="Mutexes" Binding="{Binding MutexCount}" Width="Auto"/>
+                    <DataGridTextColumn Header="Domains" Binding="{Binding DomainCount}" Width="Auto"/>
+                    <DataGridTextColumn Header="Filenames" Binding="{Binding FilenameCount}" Width="Auto"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+    </Grid>
 </Grid>
 </UserControl>

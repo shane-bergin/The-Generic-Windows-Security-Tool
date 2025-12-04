@@ -29,14 +29,15 @@ public partial class HardeningTab : System.Windows.Controls.UserControl
 
         try
         {
-        if (level is HardeningProfileLevel.Balanced or HardeningProfileLevel.Audit)
-        {
-            MessageBox.Show(
-                "To change Controlled Folder Access, Windows Tamper Protection must be disabled.\n\nStart -> Windows Security -> Virus & threat protection -> Manage ransomware protection -> Tamper Protection.\n\nThis app cannot change Tamper Protection.",
-                "Tamper Protection",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
+            var profile = _engine.GetProfile(level);
+            if (profile.ControlledFolderAccessOn)
+            {
+                MessageBox.Show(
+                    "To change Controlled Folder Access, Windows Tamper Protection must be disabled.\n\nStart -> Windows Security -> Virus & threat protection -> Manage ransomware protection -> Tamper Protection.\n\nThis app cannot change Tamper Protection.",
+                    "Tamper Protection",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
 
             if (level is HardeningProfileLevel.Audit)
             {
@@ -55,7 +56,6 @@ public partial class HardeningTab : System.Windows.Controls.UserControl
                 LogBox.AppendText($"{DateTime.Now:HH:mm:ss} {msg}{Environment.NewLine}");
                 LogBox.ScrollToEnd();
             });
-            var profile = _engine.GetProfile(level);
             profile = await _engine.ApplyProfileAsync(profile, progress);
             StatusText.Text = $"Applied profile: {level}";
             if (profile.RebootRequired) StatusText.Text += " (reboot required for HVCI/CG)";

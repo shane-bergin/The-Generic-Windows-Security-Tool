@@ -14,6 +14,8 @@ public partial class NetworkTab : System.Windows.Controls.UserControl
 private readonly NetworkSecurityEngine _engine = new();
 private readonly System.Windows.Threading.DispatcherTimer _timer;
 private readonly bool _isAdmin;
+private readonly CancellationTokenSource _cts = new();
+private bool _refreshInFlight;
 
 public NetworkTab()
 {
@@ -34,31 +36,52 @@ public NetworkTab()
         StatusText.Text = "Ready";
     }
 
-    RefreshPorts();
+    _ = RefreshPortsAsync();
 
     _timer = new System.Windows.Threading.DispatcherTimer
     {
         Interval = TimeSpan.FromSeconds(5)
     };
-    _timer.Tick += (_, _) => RefreshPorts();
+    _timer.Tick += async (_, _) => await RefreshPortsAsync();
     _timer.Start();
-    Unloaded += (_, _) => _timer.Stop();
+    Unloaded += (_, _) =>
+    {
+        _cts.Cancel();
+        _timer.Stop();
+    };
 }
 
-private void RefreshPorts()
+private async Task RefreshPortsAsync()
 {
-    PortsGrid.ItemsSource = _engine.GetListeningPorts();
+    if (_refreshInFlight) return;
+    try
+    {
+        _refreshInFlight = true;
+        var ports = await Task.Run(() => _engine.GetListeningPorts(), _cts.Token);
+        PortsGrid.ItemsSource = ports;
+    }
+    catch (OperationCanceledException)
+    {
+    }
+    catch (Exception ex)
+    {
+        StatusText.Text = $"Failed to refresh ports: {ex.Message}";
+    }
+    finally
+    {
+        _refreshInFlight = false;
+    }
 }
 
-private void Fortress_Click(object sender, RoutedEventArgs e)
+private async void Fortress_Click(object sender, RoutedEventArgs e)
 {
     if (!EnsureAdminForAction()) return;
     try
     {
         StatusText.Text = "Enabling fortress mode (block inbound, allow outbound)...";
-        _engine.EnableFortressMode();
+        await Task.Run(() => _engine.EnableFortressMode(), _cts.Token);
         StatusText.Text = "Fortress mode enabled.";
-        RefreshPorts();
+        await RefreshPortsAsync();
     }
     catch (Exception ex)
     {
@@ -66,15 +89,15 @@ private void Fortress_Click(object sender, RoutedEventArgs e)
     }
 }
 
-private void ResetFw_Click(object sender, RoutedEventArgs e)
+private async void ResetFw_Click(object sender, RoutedEventArgs e)
 {
     if (!EnsureAdminForAction()) return;
     try
     {
         StatusText.Text = "Resetting Windows Firewall to defaults...";
-        _engine.ResetFirewallToDefault();
+        await Task.Run(() => _engine.ResetFirewallToDefault(), _cts.Token);
         StatusText.Text = "Firewall reset to defaults.";
-        RefreshPorts();
+        await RefreshPortsAsync();
     }
     catch (Exception ex)
     {
@@ -99,21 +122,21 @@ private async void Blocklists_Click(object sender, RoutedEventArgs e)
     }
 }
 
-private void RemoveBlocklists_Click(object sender, RoutedEventArgs e)
+private async void RemoveBlocklists_Click(object sender, RoutedEventArgs e)
 {
     if (!EnsureAdminForAction()) return;
     StatusText.Text = "Removing TGWST threat block rules...";
-    _engine.RemoveThreatBlocklistRules();
+    await Task.Run(() => _engine.RemoveThreatBlocklistRules(), _cts.Token);
         StatusText.Text = "Threat block rules removed.";
 }
 
-private void Block_Click(object sender, RoutedEventArgs e)
+private async void Block_Click(object sender, RoutedEventArgs e)
 {
     if (!EnsureAdminForAction()) return;
     if ((sender as FrameworkElement)?.DataContext is not PortInfo port) return;
     try
     {
-        _engine.BlockPort(port.Port, port.Protocol);
+        await Task.Run(() => _engine.BlockPort(port.Port, port.Protocol), _cts.Token);
         StatusText.Text = $"Blocked inbound {port.Protocol} {port.Port} (Process: {port.ProcessName}, PID: {port.Pid}).";
     }
     catch (Exception ex)
