@@ -5,6 +5,7 @@
 
     <MajorUpgrade DowngradeErrorMessage="A later version of TGWST is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
 
     <Property Id="ARPHELPLINK" Value="https://github.com/shane-bergin/The-Generic-Windows-Security-Tool" />
     <Property Id="ARPNOREPAIR" Value="1" />
