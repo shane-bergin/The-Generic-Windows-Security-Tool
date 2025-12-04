@@ -15,7 +15,18 @@
 
   <ItemGroup>
     <Resource Include="Assets\generic_windows_security_tool_icon.png" />
+    <Resource Include="Assets\TGWST.png" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <SignToolPath Condition="'$(SignToolPath)'==''">$(ProgramFiles(x86))\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe</SignToolPath>
+    <SignTimestampUrl Condition="'$(SignTimestampUrl)'==''">http://timestamp.digicert.com</SignTimestampUrl>
+  </PropertyGroup>
+
+  <Target Name="SignPublished" AfterTargets="Publish" Condition="'$(SignPfxPath)' != ''">
+    <Message Text="Signing with $(SignPfxPath)" Importance="high" />
+    <Exec Command="&quot;$(SignToolPath)&quot; sign /fd sha256 /f &quot;$(SignPfxPath)&quot; /p &quot;$(SignPfxPassword)&quot; /tr &quot;$(SignTimestampUrl)&quot; /td sha256 &quot;$(PublishDir)TGWST.App.exe&quot;" />
+  </Target>
 
   <ItemGroup Condition="Exists('..\TGWST.Core\Native\yara64.dll')">
     <Content Include="..\TGWST.Core\Native\yara64.dll">

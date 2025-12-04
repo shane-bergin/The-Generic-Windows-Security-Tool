@@ -184,11 +184,17 @@ private async Task SetDefenderOptionsAsync(HardeningProfile profile, IProgress<s
     Report(log, "Applying Defender options (Realtime/Network Protection/CFA)");
     await RunPowerShellAsync(script, log, ct, "Set Defender options");
 
-    var verifyScript = @"
+    var verifyScript = $@"
 $p = Get-MpPreference
-""Realtime: $($p.DisableRealtimeMonitoring -eq $false)""
-""NetworkProtection: $($p.EnableNetworkProtection)""
-""ControlledFolderAccess: $($p.EnableControlledFolderAccess)""
+$desiredRealtime = {(profile.DefenderRealtimeOn ? "$false" : "$true")}
+$desiredNet = {(profile.NetworkProtectionOn ? "1" : "0")}
+$desiredCfa = {(profile.ControlledFolderAccessOn ? "1" : "0")}
+if ($p.DisableRealtimeMonitoring -ne $desiredRealtime) {{ Write-Output 'Realtime mismatch (policy may enforce).'; }}
+if ($p.EnableNetworkProtection -ne $desiredNet) {{ Write-Output 'Network Protection mismatch (policy may enforce).'; }}
+if ($p.EnableControlledFolderAccess -ne $desiredCfa) {{ Write-Output 'Controlled Folder Access mismatch (policy may enforce or Tamper Protection enabled).'; }}
+Write-Output ""Realtime: $($p.DisableRealtimeMonitoring -eq $false)""
+Write-Output ""NetworkProtection: $($p.EnableNetworkProtection)""
+Write-Output ""ControlledFolderAccess: $($p.EnableControlledFolderAccess)""
 ";
     await RunPowerShellAsync(verifyScript, log, ct, "Verify Defender options");
 }

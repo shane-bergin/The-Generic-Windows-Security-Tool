@@ -76,7 +76,7 @@ Applies one of four Microsoft Defender / ASR profiles and logs all changes. Prof
 
 # Scan
 
-Two YARA‑only scan modes. ClamAV support was removed for simplicity.
+Two YARA‑only scan modes. 
 
 ## Scan Types
 
@@ -168,3 +168,4 @@ Removes all firewall rules previously created by the blocklist feature.
 ```bash
 dotnet restore TGWST.sln
 dotnet publish src/TGWST.App/TGWST.App.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true /p:PublishTrimmed=false -o publish
+

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="The Generic Windows Security Tool" Language="1033" Version="1.0.0.0" Manufacturer="TGWST" UpgradeCode="BE64B133-8D56-45A3-9C7E-5F89A0A3CC01">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" />
+
+    <MajorUpgrade DowngradeErrorMessage="A later version of TGWST is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="MainFeature" Title="TGWST" Level="1">
+      <ComponentGroupRef Id="AppComponents" />
+    </Feature>
+
+    <UIRef Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/shane-bergin/The-Generic-Windows-Security-Tool" />
+  </Product>
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="TGWST" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ProgramMenuDir" Name="TGWST" />
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="AppComponents" Directory="INSTALLFOLDER">
+      <Component Id="AppExe" Guid="{A23E4D3F-88D0-4AA9-8A71-7EDB069C3D59}">
+        <File Source="$(var.PublishDir)\TGWST.App.exe" KeyPath="yes" />
+        <Shortcut Id="StartMenuShortcut"
+                  Directory="ProgramMenuDir"
+                  Name="TGWST"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon"
+                  IconIndex="0"
+                  Advertise="no"
+                  Target="[INSTALLFOLDER]TGWST.App.exe" />
+      </Component>
+      <Component Id="AppFiles" Guid="{E8A1C6EE-002E-4A14-8CB6-22F4EE1171C2}">
+        <File Source="$(var.PublishDir)\TGWST.App.dll" KeyPath="yes" />
+        <File Source="$(var.PublishDir)\TGWST.Core.dll" />
+        <File Source="$(var.PublishDir)\Assets\TGWST.png" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Icon Id="AppIcon" SourceFile="$(var.PublishDir)\Assets\generic_windows_security_tool_icon.png" />
+  </Fragment>
+</Wix>

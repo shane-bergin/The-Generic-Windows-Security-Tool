@@ -11,22 +11,6 @@ public sealed class ScanEngine
 {
 private readonly FileScanEngine _fileEngine = new();
 private readonly SigmaEngine _sigmaEngine = new();
-private readonly ClamEngine _clamEngine = new();
-private bool _useClam;
-
-public bool UseClam
-{
-    get => _useClam;
-    set
-    {
-        _useClam = value;
-        if (value)
-            _ = _clamEngine.EnsureInstalledAsync();
-    }
-}
-
-public Task<bool> EnsureClamAsync(IProgress<string>? log = null, CancellationToken ct = default) =>
-    _clamEngine.EnsureInstalledAsync(log, ct);
 
     public async Task<IReadOnlyList<ScanResult>> RunScanAsync(
         ScanType type,
@@ -37,12 +21,6 @@ public Task<bool> EnsureClamAsync(IProgress<string>? log = null, CancellationTok
     {
         var fileHits = await _fileEngine.RunFileScanAsync(type, root, progress, ct);
         var hitsList = fileHits.ToArray();
-
-    if (_useClam)
-    {
-        var clamHits = await _clamEngine.RunClamScanAsync(root ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), log, ct);
-        hitsList = hitsList.Concat(clamHits).ToArray();
-    }
 
     var suspiciousBins = hitsList.Where(h => h.Suspicious)
         .Select(h => Path.GetFileNameWithoutExtension(h.Path))

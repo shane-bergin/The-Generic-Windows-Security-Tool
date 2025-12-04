@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using dnYara;
@@ -17,6 +18,7 @@ public sealed class FileScanEngine
     private readonly YaraContext? _yaraContext;
     private readonly object _scanLock = new();
     private readonly string? _initError;
+    private readonly HashSet<string> _externalRuleNames = new(StringComparer.OrdinalIgnoreCase);
 
     public FileScanEngine()
     {
@@ -34,6 +36,7 @@ public sealed class FileScanEngine
             using var compiler = new Compiler();
             var yaraRules = LoadEmbeddedRules("TGWST.Core.Rules.yar");
             compiler.AddRuleString(yaraRules);
+            LoadExternalYaraFeeds(compiler);
             _rules = compiler.Compile();
         }
         catch (Exception ex)
@@ -96,11 +99,15 @@ public sealed class FileScanEngine
                 var first = matches.FirstOrDefault();
                 if (first?.MatchingRule != null)
                 {
+                    var isExternal = _externalRuleNames.Contains(first.MatchingRule.Identifier);
+                    var reason = $"YARA match: {first.MatchingRule.Identifier}";
+                    if (isExternal) reason += " (Source: External Feed)";
+
                     results.Add(new ScanResult
                     {
                         Path = file,
                         Suspicious = true,
-                        Reason = $"YARA match: {first.MatchingRule.Identifier}",
+                        Reason = reason,
                         YaraRule = first.MatchingRule.Identifier,
                         Engine = "dnYara v2.1.0 (YARA 4.1.1)"
                     });
@@ -219,5 +226,42 @@ public sealed class FileScanEngine
             ?? throw new InvalidOperationException($"Embedded resource not found: {resourceName}");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
+    }
+
+    private void LoadExternalYaraFeeds(Compiler compiler)
+    {
+        var files = IocFeedLoader.GetYaraRuleFiles();
+        foreach (var file in files)
+        {
+            try
+            {
+                compiler.AddRuleFile(file);
+                foreach (var name in ParseRuleNames(file))
+                    _externalRuleNames.Add(name);
+            }
+            catch
+            {
+                // skip bad feed file
+            }
+        }
+    }
+
+    private static IEnumerable<string> ParseRuleNames(string path)
+    {
+        var names = new List<string>();
+        try
+        {
+            var text = File.ReadAllText(path);
+            var regex = new Regex(@"\brule\s+([A-Za-z0-9_]+)", RegexOptions.Compiled);
+            foreach (System.Text.RegularExpressions.Match m in regex.Matches(text))
+            {
+                if (m.Groups.Count > 1)
+                    names.Add(m.Groups[1].Value);
+            }
+        }
+        catch
+        {
+        }
+        return names;
     }
 }

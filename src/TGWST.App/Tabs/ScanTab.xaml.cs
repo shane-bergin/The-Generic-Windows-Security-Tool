@@ -12,93 +12,143 @@ namespace TGWST.App.Tabs;
 
 public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPropertyChanged
 {
-private readonly ScanEngine _engine = new();
-public ObservableCollection<ScanResult> Results { get; } = new();
+    private readonly ScanEngine _engine = new();
+    public ObservableCollection<ScanResult> Results { get; } = new();
+    public ObservableCollection<IocBundleView> IocBundles { get; } = new();
 
-private string _status = "Ready";
-public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
+    private string _status = "Ready";
+    public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
 
-private string _logText = "";
-public string LogText { get => _logText; set { _logText = value; OnPropertyChanged(); } }
+    private string _logText = "";
+    public string LogText { get => _logText; set { _logText = value; OnPropertyChanged(); } }
 
-private double _progress;
-public double Progress { get => _progress; set { _progress = value; OnPropertyChanged(); } }
+    private double _progress;
+    public double Progress { get => _progress; set { _progress = value; OnPropertyChanged(); } }
 
-private Visibility _progressVisible = Visibility.Collapsed;
-public Visibility ProgressVisible { get => _progressVisible; set { _progressVisible = value; OnPropertyChanged(); } }
+    private Visibility _progressVisible = Visibility.Collapsed;
+    public Visibility ProgressVisible { get => _progressVisible; set { _progressVisible = value; OnPropertyChanged(); } }
 
-private bool _progressIndeterminate;
-public bool ProgressIndeterminate { get => _progressIndeterminate; set { _progressIndeterminate = value; OnPropertyChanged(); } }
+    private bool _progressIndeterminate;
+    public bool ProgressIndeterminate { get => _progressIndeterminate; set { _progressIndeterminate = value; OnPropertyChanged(); } }
 
-public ScanTab()
-{
-    InitializeComponent();
-    DataContext = this;
-    ScanTypeCombo.SelectedIndex = 0;
-}
+    private int _yaraFeedCount;
+    public int YaraFeedCount { get => _yaraFeedCount; set { _yaraFeedCount = value; OnPropertyChanged(); } }
 
-private async void Scan_Click(object sender, RoutedEventArgs e)
-{
-    try
+    private int _iocBundleCount;
+    public int IocBundleCount { get => _iocBundleCount; set { _iocBundleCount = value; OnPropertyChanged(); } }
+
+    public ScanTab()
     {
-        Status = "Scanning...";
-        ProgressVisible = Visibility.Visible;
-        ProgressIndeterminate = false;
-        Progress = 0;
-        Results.Clear();
-        LogText = "";
+        InitializeComponent();
+        DataContext = this;
+        ScanTypeCombo.SelectedIndex = 0;
+        _ = ReloadFeedsAsync();
+    }
 
-        var type = ScanTypeCombo.SelectedIndex switch
+    private async void Scan_Click(object sender, RoutedEventArgs e)
+    {
+        try
         {
-            0 => ScanType.Quick,
-            1 => ScanType.Full,
-            _ => ScanType.Quick
-        };
+            Status = "Scanning...";
+            ProgressVisible = Visibility.Visible;
+            ProgressIndeterminate = false;
+            Progress = 0;
+            Results.Clear();
+            LogText = "";
 
-        string? root = null;
-
-        _engine.UseClam = false; // ClamAV disabled; YARA-only
-        var textLog = new Progress<string>(msg => AppendLog(msg));
-
-        AppendLog($"Starting scan ({type}) at {(root ?? "default roots")}...");
-        double lastLogged = 0;
-        var progress = new Progress<double>(p =>
-        {
-            Progress = p;
-            if (p - lastLogged >= 5)
+            var type = ScanTypeCombo.SelectedIndex switch
             {
-                AppendLog($"Progress {p:0}%");
-                lastLogged = p;
+                0 => ScanType.Quick,
+                1 => ScanType.Full,
+                _ => ScanType.Quick
+            };
+
+            string? root = null;
+
+            var textLog = new Progress<string>(msg => AppendLog(msg));
+
+            AppendLog($"Starting scan ({type}) at {(root ?? "default roots")}...");
+            double lastLogged = 0;
+            var progress = new Progress<double>(p =>
+            {
+                Progress = p;
+                if (p - lastLogged >= 5)
+                {
+                    AppendLog($"Progress {p:0}%");
+                    lastLogged = p;
+                }
+            });
+
+            var hits = await _engine.RunScanAsync(type, root, progress, textLog);
+
+            foreach (var hit in hits) Results.Add(hit);
+            Status = $"{Results.Count} hits";
+            AppendLog($"Scan complete. Hits: {Results.Count}");
+        }
+        catch (Exception ex)
+        {
+            Status = $"Scan failed: {ex.Message}";
+            AppendLog(Status);
+        }
+        finally
+        {
+            ProgressVisible = Visibility.Collapsed;
+            ProgressIndeterminate = false;
+        }
+    }
+
+    private async void ReloadFeeds_Click(object sender, RoutedEventArgs e) => await ReloadFeedsAsync();
+
+    private async Task ReloadFeedsAsync()
+    {
+        try
+        {
+            var feeds = await Task.Run(() =>
+            {
+                var yara = IocFeedLoader.GetYaraRuleFiles();
+                var bundles = IocFeedLoader.GetIocBundles();
+                return (yara, bundles);
+            });
+
+            YaraFeedCount = feeds.yara.Count;
+
+            IocBundles.Clear();
+            foreach (var b in feeds.bundles)
+            {
+                IocBundles.Add(new IocBundleView(b));
             }
-        });
-
-        var hits = await _engine.RunScanAsync(type, root, progress, textLog);
-
-        foreach (var hit in hits) Results.Add(hit);
-        Status = $"{Results.Count} hits";
-        AppendLog($"Scan complete. Hits: {Results.Count}");
+            IocBundleCount = feeds.bundles.Count;
+            Status = $"Feeds: {YaraFeedCount} YARA, {IocBundleCount} IOC bundles";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Feed reload failed: {ex.Message}";
+        }
     }
-    catch (Exception ex)
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private void AppendLog(string message)
     {
-        Status = $"Scan failed: {ex.Message}";
-        AppendLog(Status);
+        var line = $"{DateTime.Now:HH:mm:ss} {message}";
+        LogText = string.IsNullOrEmpty(LogText) ? line : $"{LogText}{Environment.NewLine}{line}";
     }
-    finally
+
+    public sealed class IocBundleView
     {
-        ProgressVisible = Visibility.Collapsed;
-        ProgressIndeterminate = false;
+        public string? Family { get; }
+        public int MutexCount { get; }
+        public int DomainCount { get; }
+        public int FilenameCount { get; }
+
+        public IocBundleView(IocBundle bundle)
+        {
+            Family = string.IsNullOrWhiteSpace(bundle.Family) ? "(unknown)" : bundle.Family;
+            MutexCount = bundle.Mutexes?.Length ?? 0;
+            DomainCount = bundle.Domains?.Length ?? 0;
+            FilenameCount = bundle.Filenames?.Length ?? 0;
+        }
     }
-}
-
-public event PropertyChangedEventHandler? PropertyChanged;
-protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
-    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-private void AppendLog(string message)
-{
-    var line = $"{DateTime.Now:HH:mm:ss} {message}";
-    LogText = string.IsNullOrEmpty(LogText) ? line : $"{LogText}{Environment.NewLine}{line}";
-}
-
-
 }
