@@ -40,7 +40,7 @@ public partial class ComplianceTab : System.Windows.Controls.UserControl
 
     private void Browse_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFileDialog
+        var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Filter = "Baseline files (*.json;*.csv)|*.json;*.csv|All files (*.*)|*.*",
             Multiselect = false

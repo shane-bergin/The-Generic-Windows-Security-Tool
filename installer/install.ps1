@@ -49,8 +49,16 @@ try {
     $clamSrc = Join-Path $Source "ClamAV"
     $clamDst = Join-Path $Env:ProgramData "TGWST\ClamAV"
     Copy-ClamAv -src $clamSrc -dst $clamDst
-    $exe = Join-Path $Target "TGWST.App.exe"
-    if (-not (Test-Path $exe)) { Write-Error "Executable not found at $exe" }
+    $exe = Join-Path $Target "TGWST.exe"
+    if (-not (Test-Path $exe)) {
+        $fallback = Join-Path $Target "TGWST.App.exe"
+        if (Test-Path $fallback) {
+            Rename-Item -Path $fallback -NewName "TGWST.exe"
+            $exe = Join-Path $Target "TGWST.exe"
+        } else {
+            Write-Error "Executable not found at $exe"
+        }
+    }
     Create-Shortcut -exePath $exe
     Write-Host "Installed to $Target"
     Write-Host "Start Menu shortcut created: TGWST"

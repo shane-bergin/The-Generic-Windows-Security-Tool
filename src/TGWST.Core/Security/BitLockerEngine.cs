@@ -11,12 +11,17 @@ public sealed class BitLockerEngine
 
     public void EnableOsDrive(string driveLetter, string pin)
     {
-        var args = $"-on {driveLetter}: -tpmandpin -pin {pin} -used";
+        var safePin = SanitizeSecret(pin, nameof(pin));
+        var args = $"-on {driveLetter}: -tpmandpin -pin {safePin} -used";
         RunManageBde(args);
     }
 
     public void EnableFixed(string driveLetter) => RunManageBde($"-on {driveLetter}: -used");
-    public void EnableRemovable(string driveLetter, string password) => RunManageBde($"-on {driveLetter}: -pw -password {password}");
+    public void EnableRemovable(string driveLetter, string password)
+    {
+        var safePassword = SanitizeSecret(password, nameof(password));
+        RunManageBde($"-on {driveLetter}: -pw -password {safePassword}");
+    }
     public void Suspend(string driveLetter, int rebootCount = 1) => RunManageBde($"-protectors -disable {driveLetter}: -rc {rebootCount}");
     public void Resume(string driveLetter) => RunManageBde($"-protectors -enable {driveLetter}:");
     public void AddRecoveryKey(string driveLetter, string outputDir)
@@ -41,5 +46,17 @@ public sealed class BitLockerEngine
         p.WaitForExit();
         if (p.ExitCode != 0) throw new InvalidOperationException($"manage-bde failed: {stderr}{stdout}");
         return stdout;
+    }
+
+    private static string SanitizeSecret(string secret, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(secret))
+            throw new ArgumentException("A non-empty value is required.", paramName);
+
+        var trimmed = secret.Trim();
+        if (trimmed.IndexOfAny(new[] { '"', '\r', '\n' }) >= 0)
+            throw new ArgumentException("Value cannot contain quotes or newlines.", paramName);
+
+        return $"\"{trimmed}\"";
     }
 }

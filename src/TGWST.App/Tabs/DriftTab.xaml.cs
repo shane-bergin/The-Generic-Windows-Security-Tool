@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows;
 using TGWST.App.Services;
 using TGWST.Core.Compliance;
@@ -20,12 +21,12 @@ public partial class DriftTab : System.Windows.Controls.UserControl
         BaselineSelectionService.SelectionChanged += baseline => _vm.SetBaseline(baseline);
     }
 
-    private void Start_Click(object sender, RoutedEventArgs e)
+    private async void Start_Click(object sender, RoutedEventArgs e)
     {
         if (!_vm.CanStart || string.IsNullOrWhiteSpace(_vm.SelectedBaselinePath)) return;
         try
         {
-            Stop_Click(sender, e);
+            await StopMonitoringAsync();
             _detector = new DriftDetector(_vm.SelectedBaselinePath, TimeSpan.FromSeconds(_vm.IntervalSeconds));
             _detector.DriftDetected += (compliant, total) =>
             {
@@ -45,6 +46,11 @@ public partial class DriftTab : System.Windows.Controls.UserControl
     }
 
     private async void Stop_Click(object? sender, RoutedEventArgs e)
+    {
+        await StopMonitoringAsync();
+    }
+
+    private async Task StopMonitoringAsync()
     {
         if (_detector != null)
         {

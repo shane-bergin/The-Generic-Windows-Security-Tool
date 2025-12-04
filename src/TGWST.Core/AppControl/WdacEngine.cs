@@ -10,7 +10,7 @@ public sealed class WdacEngine
     {
         if (!File.Exists(xmlPath)) throw new FileNotFoundException(xmlPath);
         var mode = enforce ? "Enabled:UMCI" : "Audit";
-        var args = $"-Command \"ConvertFrom-CIPolicy -XmlFilePath '{xmlPath}' -BinaryFilePath '$env:TEMP\\tgwst.cip'; Set-RuleOption '$env:TEMP\\tgwst.cip' 3; Set-RuleOption '$env:TEMP\\tgwst.cip' 0; if('{mode}' -eq 'Audit'){{Set-RuleOption '$env:TEMP\\tgwst.cip' 3}}; Copy-Item '$env:TEMP\\tgwst.cip' 'C:\\Windows\\System32\\CodeIntegrity\\tgwst.cip'; Invoke-CimMethod -Namespace root\\Microsoft\\Windows\\CI -ClassName CI_Policy -MethodName UpdatePolicy -Arguments @{{FilePath='C:\\Windows\\System32\\CodeIntegrity\\tgwst.cip'}}\"";
+        var args = $"-Command \"ConvertFrom-CIPolicy -XmlFilePath '{xmlPath}' -BinaryFilePath '$env:TEMP\\tgwst.cip'; if('{mode}' -eq 'Audit'){{ Set-RuleOption -FilePath '$env:TEMP\\tgwst.cip' -Option 0 -Delete; Set-RuleOption -FilePath '$env:TEMP\\tgwst.cip' -Option 3; }} else {{ Set-RuleOption -FilePath '$env:TEMP\\tgwst.cip' -Option 3 -Delete; Set-RuleOption -FilePath '$env:TEMP\\tgwst.cip' -Option 0; }} Copy-Item '$env:TEMP\\tgwst.cip' 'C:\\Windows\\System32\\CodeIntegrity\\tgwst.cip' -Force; Invoke-CimMethod -Namespace root\\Microsoft\\Windows\\CI -ClassName CI_Policy -MethodName UpdatePolicy -Arguments @{{FilePath='C:\\Windows\\System32\\CodeIntegrity\\tgwst.cip'}}\"";
         RunPwsh(args);
     }
 

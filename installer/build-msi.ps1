@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$Configuration = "Release",
     [string]$RuntimeIdentifier = "win-x64",
@@ -63,10 +63,18 @@ function Ensure-ClamAvPayload {
     if ((Test-Path (Join-Path $clamBin "clamscan.exe")) -and (Test-Path (Join-Path $clamBin "freshclam.exe"))) {
         Write-Host "ClamAV payload already present; skipping download."
     } else {
-        Write-Host "Fetching portable ClamAV..."
+        Write-Host "Preparing portable ClamAV..."
         $zipUrl = "https://www.clamav.net/downloads/production/clamav-1.4.1.win.x64.zip"
         $zipPath = Join-Path $downloadCache "clamav-portable.zip"
-        Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+        if (-not (Test-Path $zipPath)) {
+            try {
+                Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -ErrorAction Stop
+            } catch {
+                throw "Failed to download ClamAV payload. Place clamav-portable.zip at $zipPath and re-run. Error: $($_.Exception.Message)"
+            }
+        } else {
+            Write-Host "Using cached ClamAV archive: $zipPath"
+        }
 
         $tmp = Join-Path $downloadCache "clamav-extract"
         Ensure-CleanDir -path $tmp
@@ -86,7 +94,12 @@ function Ensure-ClamAvPayload {
         if (-not (Test-Path $target)) {
             Write-Host "Downloading signatures: $db"
             $url = "https://database.clamav.net/$db"
-            Invoke-WebRequest -Uri $url -OutFile $target
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $target -ErrorAction Stop
+            } catch {
+                Write-Warning ("Failed to download {0}: {1}. Creating placeholder." -f $db, $_.Exception.Message)
+                New-Item -ItemType File -Path $target -Force | Out-Null
+            }
         }
     }
 
@@ -133,10 +146,14 @@ try {
         -o $publishDir
 
     Copy-Stage -source $publishDir -destination $stageDir
+    # Remove Mark-of-the-Web from all staged files
+    Get-ChildItem $stageDir -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
 
     Write-Host "Preparing ClamAV payload..."
     Ensure-ClamAvPayload -destDir $clamavStage
+    Get-ChildItem $clamavStage -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
     Copy-Stage -source $clamavStage -destination (Join-Path $publishDir "ClamAV")
+    Get-ChildItem (Join-Path $publishDir "ClamAV") -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
 
     $exePath = Join-Path $stageDir "TGWST.exe"
     $appExe = Join-Path $stageDir "TGWST.App.exe"
@@ -168,8 +185,58 @@ try {
     $light = Get-WixTool "light.exe"
 
     Write-Host "Harvesting staged files with heat..."
-    & $heat dir $stageDir -cg HarvestedFiles -dr INSTALLFOLDER -srd -sreg -var var.StageDir -out $harvestFile -gg | Out-Null
-    & $heat dir $clamavStage -cg ClamAvFiles -dr CLAMAVDIR -srd -sreg -var var.ClamAvDir -out $clamHarvest -gg | Out-Null
+    & $heat dir $stageDir -cg HarvestedFiles -dr INSTALLFOLDER -srd -sreg -var var.StageDir -out $harvestFile -gg -platform x64 | Out-Null
+    & $heat dir $clamavStage -cg ClamAvFiles -dr CLAMAVDIR -srd -sreg -var var.ClamAvDir -out $clamHarvest -gg -platform x64 | Out-Null
+
+    # Ensure binaries under ProgramFiles64Folder are marked Win64
+    (Get-Content $harvestFile) -replace '<Component ', '<Component Win64="yes" ' | Set-Content $harvestFile
+
+    # ------------------------------------------------------------------
+    # FINAL VALIDATION: every native DLL that will ship MUST be harvested
+    # ------------------------------------------------------------------
+    Write-Host "`nValidating native DLL harvest..." -ForegroundColor Cyan
+
+    $onDiskDlls = @(
+        Get-ChildItem $stageDir    -Recurse -Filter *.dll -ErrorAction SilentlyContinue
+        Get-ChildItem $clamavStage -Recurse -Filter *.dll -ErrorAction SilentlyContinue
+    ) | Select-Object -ExpandProperty Name -Unique
+
+    $harvestedDlls = @()
+
+    if (Test-Path $harvestFile) {
+        $harvestedDlls += Select-String -Path $harvestFile -Pattern 'Name="([^"]+\.dll)"' |
+            ForEach-Object {
+                $m = [regex]::Match($_.Line, 'Name="([^"]+\.dll)"')
+                if ($m.Success) { $m.Groups[1].Value }
+            }
+    }
+
+    if (Test-Path $clamHarvest) {
+        $harvestedDlls += Select-String -Path $clamHarvest -Pattern 'Name="([^"]+\.dll)"' |
+            ForEach-Object {
+                $m = [regex]::Match($_.Line, 'Name="([^"]+\.dll)"')
+                if ($m.Success) { $m.Groups[1].Value }
+            }
+    }
+
+    $harvestedDlls = $harvestedDlls | Sort-Object -Unique
+
+    $missing = $onDiskDlls | Where-Object { $harvestedDlls -notcontains $_ }
+
+    if ($missing) {
+        Write-Host "DLLs found on disk (will be installed):" -ForegroundColor Yellow
+        $onDiskDlls | ForEach-Object { Write-Host "  $_" }
+
+        Write-Host "`nDLLs actually harvested into .wxs:" -ForegroundColor Yellow
+        $harvestedDlls | ForEach-Object { Write-Host "  $_" }
+
+        Write-Error "`nFATAL: The following native DLLs exist on disk but were NOT harvested:"
+        $missing | ForEach-Object { Write-Error "  $_" }
+        throw "Harvest incomplete - native DLLs missing"
+    }
+
+    Write-Host "Harvest validation PASSED - all $($onDiskDlls.Count) native DLL(s) are correctly harvested:" -ForegroundColor Green
+    $onDiskDlls | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGreen }
 
     Write-Host "Compiling WiX sources..."
     & $candle -nologo `
@@ -211,3 +278,6 @@ try {
     Write-Error $_
     exit 1
 }
+
+
+

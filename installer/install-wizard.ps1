@@ -254,9 +254,15 @@ function Start-InstallJob($src, $dst, $makeShortcut) {
             LogLine "Source: $srcPath"
             LogLine "Target: $dstPath"
 
-            $publishedExe = Join-Path $srcPath "TGWST.App.exe"
+            $publishedExe = Join-Path $srcPath "TGWST.exe"
+            $legacyExe = Join-Path $srcPath "TGWST.App.exe"
             if (-not (Test-Path $publishedExe)) {
-                Ensure-Publish -proj $projectPath -outputPath $srcPath
+                if (Test-Path $legacyExe) {
+                    Rename-Item -Path $legacyExe -NewName "TGWST.exe"
+                    $publishedExe = Join-Path $srcPath "TGWST.exe"
+                } else {
+                    Ensure-Publish -proj $projectPath -outputPath $srcPath
+                }
             } else {
                 LogLine "Found existing publish output."
             }
@@ -264,7 +270,14 @@ function Start-InstallJob($src, $dst, $makeShortcut) {
             Copy-AppFiles -sourcePath $srcPath -targetPath $dstPath
             Copy-ClamAvPayload -sourcePath $srcPath
 
-            $installedExe = Join-Path $dstPath "TGWST.App.exe"
+            $installedExe = Join-Path $dstPath "TGWST.exe"
+            if (-not (Test-Path $installedExe)) {
+                $installedLegacy = Join-Path $dstPath "TGWST.App.exe"
+                if (Test-Path $installedLegacy) {
+                    Rename-Item -Path $installedLegacy -NewName "TGWST.exe"
+                    $installedExe = Join-Path $dstPath "TGWST.exe"
+                }
+            }
             if (-not (Test-Path $installedExe)) {
                 throw "Install failed; $installedExe was not found after copy."
             }
