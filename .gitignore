@@ -3,6 +3,12 @@
 **/obj/
 **/TestResults/
 **/TestResult*/
+publish/
+installer/publish/
+installer/HarvestedFiles.wxs
+installer/*.exe
+*.msi
+*.wixpdb
 
 # Visual Studio settings
 .vs/

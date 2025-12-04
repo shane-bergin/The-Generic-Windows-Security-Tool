@@ -10,7 +10,8 @@
     <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
         <Button Content="Refresh" Click="Refresh_Click" Margin="0,0,8,0"/>
         <Button Content="Uninstall Selected" Click="Uninstall_Click" Margin="0,0,8,0"/>
-        <Button Content="Remove Leftovers" Click="RemoveLeftovers_Click"/>
+        <Button Content="Remove Leftovers" Click="RemoveLeftovers_Click" Margin="0,0,8,0"/>
+        <CheckBox x:Name="DryRunCheck" Content="Dry run (no delete)" VerticalAlignment="Center"/>
     </StackPanel>
 
     <DataGrid x:Name="AppsGrid"
@@ -28,10 +29,12 @@
               Grid.Row="2"
               ItemsSource="{Binding Leftovers}"
               AutoGenerateColumns="False"
-              IsReadOnly="True">
+              IsReadOnly="False">
         <DataGrid.Columns>
+            <DataGridCheckBoxColumn Header="Delete?" Binding="{Binding Selected, Mode=TwoWay}" Width="Auto"/>
             <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="Auto"/>
             <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="*"/>
+            <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}" Width="Auto"/>
             <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="2*"/>
         </DataGrid.Columns>
     </DataGrid>

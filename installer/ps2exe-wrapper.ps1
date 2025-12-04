@@ -20,3 +20,4 @@ Write-Host "Wrapping $ScriptPath into $OutputExe ..."
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $ps2exe.Path -inputFile $ScriptPath -outputFile $OutputExe -icon "$PSScriptRoot\..\src\TGWST.App\Assets\generic_windows_security_tool_icon.png" -noConsole
 
 Write-Host "Done. Output: $OutputExe"
+Write-Host "Ship the EXE together with a TGWST publish folder (e.g., installer\\publish)."

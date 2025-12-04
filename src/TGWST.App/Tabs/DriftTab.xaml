@@ -3,15 +3,21 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBox x:Name="BaselineBox" Width="400" Margin="0,0,8,0" />
-            <TextBox x:Name="IntervalBox" Width="80" Margin="0,0,8,0" Text="300" ToolTip="Seconds"/>
-            <Button Content="Start" Click="Start_Click" Margin="0,0,8,0"/>
-            <Button Content="Stop" Click="Stop_Click"/>
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,0,8"
+                   TextWrapping="Wrap"
+                   Text="Continuously re-check the selected baseline and report changes (drift) over time."/>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
+            <TextBox Width="320" Margin="0,0,8,0" Text="{Binding SelectedBaselineName}" IsReadOnly="True"/>
+            <ComboBox Width="120" Margin="0,0,8,0" ItemsSource="{Binding Intervals}" SelectedItem="{Binding IntervalSeconds, Mode=TwoWay}"/>
+            <Button Content="Start" Click="Start_Click" Margin="0,0,8,0" IsEnabled="{Binding CanStart}"/>
+            <Button Content="Stop" Click="Stop_Click" IsEnabled="{Binding IsMonitoring}"/>
         </StackPanel>
 
-        <TextBlock x:Name="StatusText" Grid.Row="1" Text="Idle"/>
+        <TextBlock Grid.Row="2" Text="{Binding Status}"/>
     </Grid>
 </UserControl>

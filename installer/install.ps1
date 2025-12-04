@@ -24,6 +24,13 @@ function Copy-App {
     robocopy $src $dst *.* /E /NFL /NDL /NJH /NJS /NC /NS /XO | Out-Null
 }
 
+function Copy-ClamAv {
+    param($src, $dst)
+    if (-not (Test-Path $src)) { return }
+    if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst | Out-Null }
+    robocopy $src $dst *.* /E /NFL /NDL /NJH /NJS /NC /NS /XO | Out-Null
+}
+
 function Create-Shortcut {
     param($exePath)
     $shell = New-Object -ComObject WScript.Shell
@@ -39,6 +46,9 @@ function Create-Shortcut {
 try {
     Ensure-Admin
     Copy-App -src $Source -dst $Target
+    $clamSrc = Join-Path $Source "ClamAV"
+    $clamDst = Join-Path $Env:ProgramData "TGWST\ClamAV"
+    Copy-ClamAv -src $clamSrc -dst $clamDst
     $exe = Join-Path $Target "TGWST.App.exe"
     if (-not (Test-Path $exe)) { Write-Error "Executable not found at $exe" }
     Create-Shortcut -exePath $exe

@@ -37,7 +37,9 @@ var apps = new List<InstalledApp>();
                 DisplayName = displayName,
                 Publisher = appKey.GetValue("Publisher") as string ?? "",
                 UninstallString = uninstallString,
-                ProductCode = appKey.GetValue("ProductCode") as string
+                ProductCode = appKey.GetValue("ProductCode") as string,
+                InstallLocation = appKey.GetValue("InstallLocation") as string,
+                InstallSource = appKey.GetValue("InstallSource") as string
             });
         }
     }

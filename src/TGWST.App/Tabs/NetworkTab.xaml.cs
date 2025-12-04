@@ -40,7 +40,7 @@ public NetworkTab()
 
     _timer = new System.Windows.Threading.DispatcherTimer
     {
-        Interval = TimeSpan.FromSeconds(5)
+        Interval = TimeSpan.FromSeconds(10)
     };
     _timer.Tick += async (_, _) => await RefreshPortsAsync();
     _timer.Start();
@@ -57,7 +57,7 @@ private async Task RefreshPortsAsync()
     try
     {
         _refreshInFlight = true;
-        var ports = await Task.Run(() => _engine.GetListeningPorts(), _cts.Token);
+        var ports = await _engine.GetListeningPortsAsync(_cts.Token);
         PortsGrid.ItemsSource = ports;
     }
     catch (OperationCanceledException)
@@ -79,7 +79,7 @@ private async void Fortress_Click(object sender, RoutedEventArgs e)
     try
     {
         StatusText.Text = "Enabling fortress mode (block inbound, allow outbound)...";
-        await Task.Run(() => _engine.EnableFortressMode(), _cts.Token);
+        await _engine.EnableFortressModeAsync(_cts.Token);
         StatusText.Text = "Fortress mode enabled.";
         await RefreshPortsAsync();
     }
@@ -95,7 +95,7 @@ private async void ResetFw_Click(object sender, RoutedEventArgs e)
     try
     {
         StatusText.Text = "Resetting Windows Firewall to defaults...";
-        await Task.Run(() => _engine.ResetFirewallToDefault(), _cts.Token);
+        await _engine.ResetFirewallToDefaultAsync(_cts.Token);
         StatusText.Text = "Firewall reset to defaults.";
         await RefreshPortsAsync();
     }

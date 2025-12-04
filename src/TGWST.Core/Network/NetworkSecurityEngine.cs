@@ -14,8 +14,9 @@ namespace TGWST.Core.Network;
 
 public sealed class NetworkSecurityEngine
 {
-private static void RunCmd(string cmd)
+private static void RunCmd(string cmd, CancellationToken ct = default)
 {
+    ct.ThrowIfCancellationRequested();
     var psi = new ProcessStartInfo
     {
         FileName = "cmd.exe",
@@ -30,6 +31,7 @@ private static void RunCmd(string cmd)
     var stdout = p.StandardOutput.ReadToEnd();
     var stderr = p.StandardError.ReadToEnd();
     p.WaitForExit();
+    ct.ThrowIfCancellationRequested();
 
     if (p.ExitCode != 0)
     {
@@ -41,26 +43,27 @@ private static void RunCmd(string cmd)
     }
 }
 
-public void EnableFortressMode()
-{
-    RunCmd("netsh advfirewall set allprofiles state on");
-    RunCmd("netsh advfirewall set allprofiles firewallpolicy blockinbound,allowoutbound");
-}
+public Task EnableFortressModeAsync(CancellationToken ct = default) =>
+    Task.Run(() =>
+    {
+        RunCmd("netsh advfirewall set allprofiles state on", ct);
+        RunCmd("netsh advfirewall set allprofiles firewallpolicy blockinbound,allowoutbound", ct);
+    }, ct);
 
-public void ResetFirewallToDefault()
-{
-    RunCmd("netsh advfirewall reset");
-}
+public Task ResetFirewallToDefaultAsync(CancellationToken ct = default) =>
+    Task.Run(() => RunCmd("netsh advfirewall reset", ct), ct);
 
-public ObservableCollection<PortInfo> GetListeningPorts()
-{
-    var list = new List<PortInfo>();
+public Task<ObservableCollection<PortInfo>> GetListeningPortsAsync(CancellationToken ct = default) =>
+    Task.Run(() =>
+    {
+        var list = new List<PortInfo>();
 
     foreach (var proto in new[] { "tcp", "udp" })
     {
         var lines = RunNetstat(proto);
         foreach (var line in lines)
         {
+            ct.ThrowIfCancellationRequested();
             var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < 4) continue;
 
@@ -77,11 +80,11 @@ public ObservableCollection<PortInfo> GetListeningPorts()
         }
     }
 
-    return new ObservableCollection<PortInfo>(list
-        .OrderBy(p => p.Protocol)
-        .ThenBy(p => p.Port)
-        .ThenBy(p => p.Address));
-}
+        return new ObservableCollection<PortInfo>(list
+            .OrderBy(p => p.Protocol)
+            .ThenBy(p => p.Port)
+            .ThenBy(p => p.Address));
+    }, ct);
 
 public void BlockPort(int port, string protocol = "TCP")
 {

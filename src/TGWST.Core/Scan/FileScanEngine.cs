@@ -4,21 +4,23 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using dnYara;
 using dnYara.Interop;
+using TGWST.Core.Feeds;
 
 namespace TGWST.Core.Scan;
 
 public sealed class FileScanEngine
 {
-    private readonly CompiledRules? _rules;
+    private CompiledRules? _rules;
     private readonly YaraContext? _yaraContext;
     private readonly object _scanLock = new();
-    private readonly string? _initError;
+    private string? _initError;
     private readonly HashSet<string> _externalRuleNames = new(StringComparer.OrdinalIgnoreCase);
+    private string _externalKey = "";
 
     public FileScanEngine()
     {
@@ -33,11 +35,8 @@ public sealed class FileScanEngine
             }
 
             _yaraContext = new YaraContext();
-            using var compiler = new Compiler();
-            var yaraRules = LoadEmbeddedRules("TGWST.Core.Rules.yar");
-            compiler.AddRuleString(yaraRules);
-            LoadExternalYaraFeeds(compiler);
-            _rules = compiler.Compile();
+            _rules = null;
+            _externalKey = "";
         }
         catch (Exception ex)
         {
@@ -51,6 +50,8 @@ public sealed class FileScanEngine
         IProgress<double>? progress = null,
         CancellationToken ct = default)
     {
+        await EnsureRulesAsync(ct).ConfigureAwait(false);
+
         if (_rules == null || _yaraContext == null)
         {
             return new[]
@@ -68,6 +69,10 @@ public sealed class FileScanEngine
         var results = new ConcurrentBag<ScanResult>();
         var roots = ResolveRoots(type, root).ToArray();
         if (roots.Length == 0) return Array.Empty<ScanResult>();
+
+        var filenameLookup = BuildIocFilenameLookup(FeedManager.IocBundles);
+        var hashLookup = BuildIocHashLookup(FeedManager.IocBundles);
+        var hashCheckEnabled = hashLookup.Count > 0;
 
         var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -103,13 +108,23 @@ public sealed class FileScanEngine
                     var reason = $"YARA match: {first.MatchingRule.Identifier}";
                     if (isExternal) reason += " (Source: External Feed)";
 
+                    var fileName = Path.GetFileName(file);
+                    var ioc = TryMatchIoc(file, fileName, filenameLookup, hashLookup, hashCheckEnabled);
+
+                    var source = isExternal ? "External Feed" : "Embedded";
+                    if (ioc != null) source = "External Feed (IOC)";
+
                     results.Add(new ScanResult
                     {
                         Path = file,
                         Suspicious = true,
                         Reason = reason,
                         YaraRule = first.MatchingRule.Identifier,
-                        Engine = "dnYara v2.1.0 (YARA 4.1.1)"
+                        Engine = "dnYara v2.1.0 (YARA 4.1.1)",
+                        Source = source,
+                        ThreatFamily = ioc?.Bundle.Family,
+                        IndicatorType = ioc?.IndicatorType,
+                        IndicatorValue = ioc?.IndicatorValue
                     });
                 }
             }
@@ -128,6 +143,52 @@ public sealed class FileScanEngine
             .OrderByDescending(r => r.Suspicious)
             .ThenBy(r => r.Path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private async Task EnsureRulesAsync(CancellationToken ct)
+    {
+        if (_yaraContext == null) return;
+
+        var external = FeedManager.YaraRuleFiles.ToArray();
+        var key = string.Join("|", external.OrderBy(f => f, StringComparer.OrdinalIgnoreCase));
+
+        lock (_scanLock)
+        {
+            if (_rules != null && key.Equals(_externalKey, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+
+        try
+        {
+            var compiled = await Task.Run(async () =>
+            {
+                using var compiler = new Compiler();
+                var yaraRules = LoadEmbeddedRules("TGWST.Core.Rules.yar");
+                compiler.AddRuleString(yaraRules);
+                var externalResult = await FeedLoader.LoadExternalYaraRulesAsync(compiler, external, ct).ConfigureAwait(false);
+                var compiledRules = compiler.Compile();
+                return (compiledRules, externalResult);
+            }, ct).ConfigureAwait(false);
+
+            lock (_scanLock)
+            {
+                _rules = compiled.compiledRules;
+                _externalRuleNames.Clear();
+                foreach (var name in compiled.externalResult.RuleNames)
+                    _externalRuleNames.Add(name);
+                _externalKey = key;
+                _initError = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            lock (_scanLock)
+            {
+                _rules = null;
+                _externalRuleNames.Clear();
+                _initError = $"Failed to initialize YARA: {ex.Message}";
+            }
+        }
     }
 
     private static IEnumerable<string> ResolveRoots(ScanType type, string? root)
@@ -228,40 +289,68 @@ public sealed class FileScanEngine
         return reader.ReadToEnd();
     }
 
-    private void LoadExternalYaraFeeds(Compiler compiler)
+    private static Dictionary<string, TGWST.Core.Feeds.IocBundle> BuildIocFilenameLookup(IReadOnlyList<TGWST.Core.Feeds.IocBundle> bundles)
     {
-        var files = IocFeedLoader.GetYaraRuleFiles();
-        foreach (var file in files)
+        var map = new Dictionary<string, TGWST.Core.Feeds.IocBundle>(StringComparer.OrdinalIgnoreCase);
+        foreach (var bundle in bundles)
         {
-            try
-            {
-                compiler.AddRuleFile(file);
-                foreach (var name in ParseRuleNames(file))
-                    _externalRuleNames.Add(name);
-            }
-            catch
-            {
-                // skip bad feed file
-            }
+            if (bundle.Filenames == null) continue;
+            foreach (var name in bundle.Filenames.Where(n => !string.IsNullOrWhiteSpace(n)))
+                map[name] = bundle;
         }
+        return map;
     }
 
-    private static IEnumerable<string> ParseRuleNames(string path)
+    private static Dictionary<string, TGWST.Core.Feeds.IocBundle> BuildIocHashLookup(IReadOnlyList<TGWST.Core.Feeds.IocBundle> bundles)
     {
-        var names = new List<string>();
+        var map = new Dictionary<string, TGWST.Core.Feeds.IocBundle>(StringComparer.OrdinalIgnoreCase);
+        foreach (var bundle in bundles)
+        {
+            if (string.IsNullOrWhiteSpace(bundle.SampleHash)) continue;
+            map[bundle.SampleHash.Trim()] = bundle;
+        }
+        return map;
+    }
+
+    private sealed record IocMatch(TGWST.Core.Feeds.IocBundle Bundle, string IndicatorType, string IndicatorValue);
+
+    private static IocMatch? TryMatchIoc(
+        string filePath,
+        string? fileName,
+        Dictionary<string, TGWST.Core.Feeds.IocBundle> filenameLookup,
+        Dictionary<string, TGWST.Core.Feeds.IocBundle> hashLookup,
+        bool hashCheckEnabled)
+    {
+        if (!string.IsNullOrWhiteSpace(fileName) &&
+            filenameLookup.TryGetValue(fileName, out var bundleFromName))
+        {
+            return new IocMatch(bundleFromName, "filename", fileName);
+        }
+
+        if (hashCheckEnabled)
+        {
+            var hash = ComputeSha256(filePath);
+            if (!string.IsNullOrWhiteSpace(hash) && hashLookup.TryGetValue(hash, out var bundleFromHash))
+            {
+                return new IocMatch(bundleFromHash, "sha256", hash);
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ComputeSha256(string path)
+    {
         try
         {
-            var text = File.ReadAllText(path);
-            var regex = new Regex(@"\brule\s+([A-Za-z0-9_]+)", RegexOptions.Compiled);
-            foreach (System.Text.RegularExpressions.Match m in regex.Matches(text))
-            {
-                if (m.Groups.Count > 1)
-                    names.Add(m.Groups[1].Value);
-            }
+            using var sha = SHA256.Create();
+            using var stream = File.OpenRead(path);
+            var hash = sha.ComputeHash(stream);
+            return BitConverter.ToString(hash).Replace("-", "", StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
+            return null;
         }
-        return names;
     }
 }
