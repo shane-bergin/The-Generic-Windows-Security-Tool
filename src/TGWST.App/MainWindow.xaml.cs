@@ -34,19 +34,19 @@ public partial class MainWindow : Window
         _trayIcon.DoubleClick += (_, _) => ShowFromTray();
     }
 
-    private static Icon LoadAppIcon()
+    private static System.Drawing.Icon LoadAppIcon()
     {
         try
         {
             var path = Process.GetCurrentProcess().MainModule?.FileName;
             var icon = !string.IsNullOrWhiteSpace(path)
-                ? Icon.ExtractAssociatedIcon(path)
+                ? System.Drawing.Icon.ExtractAssociatedIcon(path)
                 : null;
-            return icon ?? SystemIcons.Application;
+            return icon ?? System.Drawing.SystemIcons.Application;
         }
         catch
         {
-            return SystemIcons.Application;
+            return System.Drawing.SystemIcons.Application;
         }
     }
 
