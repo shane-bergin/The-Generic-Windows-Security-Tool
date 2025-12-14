@@ -97,7 +97,7 @@ public sealed class FileScanEngine
                 List<dnYara.ScanResult> matches;
                 lock (_scanLock)
                 {
-                    var scanner = new Scanner();
+                    using var scanner = new Scanner();
                     matches = scanner.ScanFile(file, _rules, YR_SCAN_FLAGS.None);
                 }
 
@@ -227,9 +227,12 @@ public sealed class FileScanEngine
             foreach (var drive in fixedDrives)
                 yield return drive;
         }
-        else
+        else if (type != ScanType.Quick)
         {
-            yield return root ?? userProfile;
+            if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+                yield return root;
+            else
+                yield return userProfile;
         }
     }
 

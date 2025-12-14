@@ -23,7 +23,7 @@ public sealed class ClamAvEngine
     }
 
     private readonly string? _clamPath;
-    private readonly string? _dbPath;
+    private string? _dbPath;
     private readonly string? _freshclamPath;
     private readonly TimeSpan _maxDbAge = TimeSpan.FromHours(24);
 
@@ -190,20 +190,27 @@ public sealed class ClamAvEngine
 
     public async Task EnsureSignaturesAsync(IProgress<string>? log, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(_freshclamPath) || string.IsNullOrWhiteSpace(_dbPath))
+        if (string.IsNullOrWhiteSpace(_freshclamPath))
         {
             log?.Report("ClamAV DB check skipped (no freshclam).");
             return;
         }
 
-        Directory.CreateDirectory(_dbPath);
-        var cvdFiles = Directory.EnumerateFiles(_dbPath, "*.c?v?d", SearchOption.TopDirectoryOnly).ToArray();
+        string dbPath = _dbPath;
+        if (string.IsNullOrWhiteSpace(dbPath))
+        {
+            dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TGWST", "ClamAV", "db");
+            _dbPath = dbPath;
+        }
+
+        Directory.CreateDirectory(dbPath);
+        var cvdFiles = Directory.EnumerateFiles(dbPath, "*.c?v?d", SearchOption.TopDirectoryOnly).ToArray();
         var newest = cvdFiles.Select(f => File.GetLastWriteTimeUtc(f)).DefaultIfEmpty(DateTime.MinValue).Max();
         var age = DateTime.UtcNow - newest;
         if (cvdFiles.Length == 0 || age > _maxDbAge)
         {
             log?.Report("Refreshing ClamAV signatures...");
-            await RunFreshClamAsync(_dbPath, log, ct).ConfigureAwait(false);
+            await RunFreshClamAsync(dbPath, log, ct).ConfigureAwait(false);
         }
     }
 
@@ -354,7 +361,7 @@ NotifyClamd false
             foreach (var drive in fixedDrives)
                 yield return drive;
         }
-        else
+        else if (type != ScanType.Quick)
         {
             if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
             {
