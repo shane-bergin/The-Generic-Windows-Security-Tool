@@ -22,6 +22,9 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
     private string _status = "Ready";
     public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
 
+    private string _clamStatus = "Checking ClamAV...";
+    public string ClamStatus { get => _clamStatus; set { _clamStatus = value; OnPropertyChanged(); } }
+
     private string _logText = "";
     public string LogText { get => _logText; set { _logText = value; OnPropertyChanged(); } }
 
@@ -42,6 +45,7 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
         InitializeComponent();
         DataContext = this;
         ScanTypeCombo.SelectedIndex = 0;
+        RefreshClamStatus();
         _ = ReloadFeedsAsync();
     }
 
@@ -49,6 +53,7 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
     {
         try
         {
+            RefreshClamStatus();
             Status = "Scanning...";
             ProgressVisible = Visibility.Visible;
             ProgressIndeterminate = false;
@@ -87,17 +92,39 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
         }
         catch (Exception ex)
         {
-            Status = $"Scan failed: {ex.Message}";
+            Status = $"ERROR: Scan failed: {ex.Message}";
             AppendLog(Status);
         }
         finally
         {
             ProgressVisible = Visibility.Collapsed;
             ProgressIndeterminate = false;
+            RefreshClamStatus();
         }
     }
 
     private async void ReloadFeeds_Click(object sender, RoutedEventArgs e) => await ReloadFeedsAsync();
+
+    private async void UpdateSignatures_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Status = "Updating signatures...";
+            var textLog = new Progress<string>(msg => AppendLog(msg));
+            await _engine.UpdateSignaturesAsync(textLog);
+            Status = "Signatures updated";
+            AppendLog("Signature update completed.");
+        }
+        catch (Exception ex)
+        {
+            Status = $"ERROR: Signature update failed: {ex.Message}";
+            AppendLog(Status);
+        }
+        finally
+        {
+            RefreshClamStatus();
+        }
+    }
 
     private async Task ReloadFeedsAsync()
     {
@@ -114,7 +141,11 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
         }
         catch (Exception ex)
         {
-            Status = $"Feed reload failed: {ex.Message}";
+            Status = $"ERROR: Feed reload failed: {ex.Message}";
+        }
+        finally
+        {
+            RefreshClamStatus();
         }
     }
 
@@ -126,6 +157,43 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
     {
         var line = $"{DateTime.Now:HH:mm:ss} {message}";
         LogText = string.IsNullOrEmpty(LogText) ? line : $"{LogText}{Environment.NewLine}{line}";
+    }
+
+    private void RefreshClamStatus()
+    {
+        var status = _engine.GetDatabaseStatus();
+        ClamStatus = DescribeClamStatus(status);
+    }
+
+    private static string DescribeClamStatus(ClamAvEngine.ClamAvDbStatus status)
+    {
+        if (!status.Available)
+            return "WARNING: ClamAV not found; deep scan will be skipped.";
+
+        if (!status.DatabaseFound && !status.FreshclamAvailable)
+            return "WARNING: ClamAV DB missing and updater unavailable; deep scan will be skipped.";
+
+        if (!status.DatabaseFound && status.FreshclamAvailable)
+            return "INFO: ClamAV DB missing; updater will download signatures before scanning.";
+
+        if (status.IsStale && status.FreshclamAvailable)
+            return $"INFO: ClamAV DB stale ({FormatAge(status.Age)}); updater will refresh before scanning.";
+
+        if (status.IsStale && !status.FreshclamAvailable)
+            return $"WARNING: ClamAV DB stale ({FormatAge(status.Age)}); updater unavailable.";
+
+        if (!status.FreshclamAvailable)
+            return $"INFO: ClamAV DB current ({FormatAge(status.Age)}); updater unavailable.";
+
+        return $"INFO: ClamAV DB current ({FormatAge(status.Age)}).";
+    }
+
+    private static string FormatAge(TimeSpan? age)
+    {
+        if (age == null) return "unknown age";
+        if (age.Value.TotalDays >= 1) return $"{age.Value.TotalDays:0.#}d";
+        if (age.Value.TotalHours >= 1) return $"{age.Value.TotalHours:0.#}h";
+        return $"{age.Value.TotalMinutes:0.#}m";
     }
 
     public sealed class IocBundleView

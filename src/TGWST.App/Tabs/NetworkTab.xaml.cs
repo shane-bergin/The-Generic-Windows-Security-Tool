@@ -24,7 +24,7 @@ public NetworkTab()
 
     if (!_isAdmin)
     {
-        StatusText.Text = "Admin rights required for firewall actions. View-only mode.";
+        StatusText.Text = "WARNING: Admin rights required for firewall actions. View-only mode.";
         MessageBox.Show(
             "Administrator rights are required to change Windows Firewall or apply threat blocklists. Please restart the app as Administrator.",
             "Administrator required",
@@ -65,7 +65,7 @@ private async Task RefreshPortsAsync()
     }
     catch (Exception ex)
     {
-        StatusText.Text = $"Failed to refresh ports: {ex.Message}";
+        StatusText.Text = $"ERROR: Failed to refresh ports: {ex.Message}";
     }
     finally
     {
@@ -85,7 +85,7 @@ private async void Fortress_Click(object sender, RoutedEventArgs e)
     }
     catch (Exception ex)
     {
-        StatusText.Text = $"Failed to enable fortress mode: {ex.Message}";
+        StatusText.Text = $"ERROR: Failed to enable fortress mode: {ex.Message}";
     }
 }
 
@@ -101,7 +101,7 @@ private async void ResetFw_Click(object sender, RoutedEventArgs e)
     }
     catch (Exception ex)
     {
-        StatusText.Text = $"Failed to reset firewall: {ex.Message}";
+        StatusText.Text = $"ERROR: Failed to reset firewall: {ex.Message}";
     }
 }
 
@@ -118,7 +118,7 @@ private async void Blocklists_Click(object sender, RoutedEventArgs e)
     }
     catch (Exception ex)
     {
-        StatusText.Text = "Error applying blocklists: " + ex.Message;
+        StatusText.Text = "ERROR: Error applying blocklists: " + ex.Message;
     }
 }
 
@@ -141,7 +141,7 @@ private async void Block_Click(object sender, RoutedEventArgs e)
     }
     catch (Exception ex)
     {
-        StatusText.Text = $"Failed to block port: {ex.Message}";
+        StatusText.Text = $"ERROR: Failed to block port: {ex.Message}";
     }
 }
 

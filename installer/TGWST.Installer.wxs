@@ -22,6 +22,7 @@
       <Directory Id="CommonAppDataFolder">
         <Directory Id="TGWSTAppData" Name="TGWST">
           <Directory Id="CLAMAVDIR" Name="ClamAV" />
+          <Directory Id="BaselinesDir" Name="Baselines" />
         </Directory>
       </Directory>
     </Directory>
@@ -30,6 +31,7 @@
       <ComponentGroupRef Id="HarvestedFiles" />
       <ComponentGroupRef Id="ClamAvFiles" />
       <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="BaselineFile" />
     </Feature>
 
     <UIRef Id="WixUI_InstallDir" />
@@ -50,6 +52,14 @@
                   Icon="AppIcon" />
         <RemoveFolder Id="ProgramMenuDirRemove" Directory="ProgramMenuDir" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\TGWST" Name="Installed" Value="1" Type="integer" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="BaselinesDir">
+      <Component Id="BaselineFile" Guid="*">
+        <File Id="TGWST_Balanced.csv" Source="assets\Baselines\TGWST_Balanced.csv" />
       </Component>
     </DirectoryRef>
   </Fragment>

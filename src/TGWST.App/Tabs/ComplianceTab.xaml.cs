@@ -34,7 +34,7 @@ public partial class ComplianceTab : System.Windows.Controls.UserControl
         }
         catch (Exception ex)
         {
-            _vm.Status = $"Evaluate failed: {ex.Message}";
+            _vm.Status = $"ERROR: Evaluate failed: {ex.Message}";
         }
     }
 
@@ -48,18 +48,14 @@ public partial class ComplianceTab : System.Windows.Controls.UserControl
         if (dlg.ShowDialog() == true)
         {
             var path = dlg.FileName;
-            var display = $"Custom: {Path.GetFileName(path)}";
-            var existing = _vm.Baselines.FirstOrDefault(b => b.FullPath.Equals(path, StringComparison.OrdinalIgnoreCase));
-            if (existing == null)
-            {
-                var info = new ComplianceBaselineInfo(display, path);
-                _vm.Baselines.Add(info);
-                _vm.SelectedBaseline = info;
-            }
-            else
-            {
-                _vm.SelectedBaseline = existing;
-            }
+            var destDir = ComplianceViewModel.ProgramDataBaselines;
+            Directory.CreateDirectory(destDir);
+            var destPath = Path.Combine(destDir, Path.GetFileName(path));
+            File.Copy(path, destPath, overwrite: true);
+            var display = $"Imported: {Path.GetFileNameWithoutExtension(path)}";
+            var info = new ComplianceBaselineInfo(display, destPath);
+            _vm.Baselines.Add(info);
+            _vm.SelectedBaseline = info;
         }
     }
 }
@@ -92,6 +88,21 @@ public sealed class ComplianceViewModel : INotifyPropertyChanged
             Baselines.Add(path);
         }
         SelectedBaseline = Baselines.FirstOrDefault();
+        if (Baselines.Count == 0)
+        {
+            if (!Directory.Exists(ProgramDataBaselines))
+            {
+                Status = $"Baselines directory is missing: {ProgramDataBaselines}";
+            }
+            else
+            {
+                Status = $"Baselines directory is empty: {ProgramDataBaselines}";
+            }
+        }
+        else
+        {
+            Status = "Ready";
+        }
     }
 
     public void SetResults(IReadOnlyList<BaselineComplianceEngine.Result> results)
@@ -102,25 +113,20 @@ public sealed class ComplianceViewModel : INotifyPropertyChanged
         Status = $"Compliant {compliant}/{results.Count}";
     }
 
-    private static string ProgramDataBaselines => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TGWST", "Baselines");
+    internal static string ProgramDataBaselines => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TGWST", "Baselines");
 
     private static ComplianceBaselineInfo[] EnumerateBaselines()
     {
-        var candidates = new[]
+        var dir = ProgramDataBaselines;
+        if (!Directory.Exists(dir))
         {
-            "CIS_L1_Windows11.csv",
-            "CIS_L2_Windows11.csv",
-            "CISA_Recommended.csv",
-            "TGWST_Balanced.csv"
-        };
-
-        var list = candidates
-            .Select(file => Path.Combine(ProgramDataBaselines, file))
-            .Where(File.Exists)
+            return Array.Empty<ComplianceBaselineInfo>();
+        }
+        var files = Directory.EnumerateFiles(dir, "*.csv", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.EnumerateFiles(dir, "*.json", SearchOption.TopDirectoryOnly))
             .Select(p => new ComplianceBaselineInfo(Path.GetFileNameWithoutExtension(p), p))
-            .ToList();
-
-        return list.ToArray();
+            .ToArray();
+        return files;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

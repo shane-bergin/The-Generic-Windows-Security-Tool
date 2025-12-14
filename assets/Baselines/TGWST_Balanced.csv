@@ -1,0 +1,4 @@
+Hive,Path,Name,Value
+HKLM,SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System,EnableLUA,1
+HKLM,SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System,ConsentPromptBehaviorAdmin,5
+HKLM,SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management,EnableCfg,1

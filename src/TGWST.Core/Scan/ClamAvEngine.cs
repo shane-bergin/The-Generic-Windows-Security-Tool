@@ -10,6 +10,18 @@ namespace TGWST.Core.Scan;
 
 public sealed class ClamAvEngine
 {
+    public sealed record ClamAvDbStatus
+    {
+        public bool Available { get; init; }
+        public bool FreshclamAvailable { get; init; }
+        public bool DatabaseFound { get; init; }
+        public bool IsStale { get; init; }
+        public TimeSpan? Age { get; init; }
+        public string? DatabasePath { get; init; }
+        public string? EnginePath { get; init; }
+        public string Message { get; init; } = "";
+    }
+
     private readonly string? _clamPath;
     private readonly string? _dbPath;
     private readonly string? _freshclamPath;
@@ -22,6 +34,73 @@ public sealed class ClamAvEngine
 
     public bool Available => !string.IsNullOrWhiteSpace(_clamPath);
 
+    public ClamAvDbStatus GetDatabaseStatus()
+    {
+        var freshclamAvailable = !string.IsNullOrWhiteSpace(_freshclamPath);
+        if (string.IsNullOrWhiteSpace(_clamPath))
+        {
+            return new ClamAvDbStatus
+            {
+                Available = false,
+                FreshclamAvailable = freshclamAvailable,
+                DatabaseFound = false,
+                Message = "ClamAV binaries not found."
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(_dbPath) || !Directory.Exists(_dbPath))
+        {
+            return new ClamAvDbStatus
+            {
+                Available = true,
+                FreshclamAvailable = freshclamAvailable,
+                DatabaseFound = false,
+                EnginePath = _clamPath,
+                Message = freshclamAvailable
+                    ? "ClamAV found, DB directory missing; will download on scan."
+                    : "ClamAV found, DB directory missing and updater not available."
+            };
+        }
+
+        var cvdFiles = Directory.EnumerateFiles(_dbPath, "*.c?v?d", SearchOption.TopDirectoryOnly).ToArray();
+        if (cvdFiles.Length == 0)
+        {
+            return new ClamAvDbStatus
+            {
+                Available = true,
+                FreshclamAvailable = freshclamAvailable,
+                DatabaseFound = false,
+                EnginePath = _clamPath,
+                DatabasePath = _dbPath,
+                Message = freshclamAvailable
+                    ? "ClamAV DB missing; will download on scan."
+                    : "ClamAV DB missing and updater not available."
+            };
+        }
+
+        var newest = cvdFiles.Select(File.GetLastWriteTimeUtc).Max();
+        var age = DateTime.UtcNow - newest;
+        var stale = age > _maxDbAge;
+
+        return new ClamAvDbStatus
+        {
+            Available = true,
+            FreshclamAvailable = freshclamAvailable,
+            DatabaseFound = true,
+            Age = age,
+            IsStale = stale,
+            EnginePath = _clamPath,
+            DatabasePath = _dbPath,
+            Message = stale
+                ? (freshclamAvailable
+                    ? $"ClamAV DB stale (age {age:c}); will refresh on scan."
+                    : $"ClamAV DB stale (age {age:c}); updater unavailable.")
+                : (freshclamAvailable
+                    ? $"ClamAV DB current (age {age:c})."
+                    : $"ClamAV DB current (age {age:c}); updater unavailable.")
+        };
+    }
+
     public async Task<IReadOnlyList<ScanResult>> RunClamScanAsync(
         ScanType type,
         string? root,
@@ -29,9 +108,18 @@ public sealed class ClamAvEngine
         IProgress<string>? log = null,
         CancellationToken ct = default)
     {
+        var dbStatus = GetDatabaseStatus();
+        log?.Report($"ClamAV status: {dbStatus.Message}");
+
         if (!Available)
         {
             log?.Report("ClamAV not found - deep scan skipped.");
+            return Array.Empty<ScanResult>();
+        }
+
+        if (!dbStatus.DatabaseFound && !dbStatus.FreshclamAvailable)
+        {
+            log?.Report("ClamAV DB missing and updater unavailable; deep scan skipped.");
             return Array.Empty<ScanResult>();
         }
 
@@ -100,7 +188,7 @@ public sealed class ClamAvEngine
         return $"--infected --recursive --no-summary {dbArg}{fdPass}{quoted}";
     }
 
-    private async Task EnsureSignaturesAsync(IProgress<string>? log, CancellationToken ct)
+    public async Task EnsureSignaturesAsync(IProgress<string>? log, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(_freshclamPath) || string.IsNullOrWhiteSpace(_dbPath))
         {
@@ -138,10 +226,14 @@ NotifyClamd false
             }
 
             var args = $"--datadir=\"{dbDir}\" --config-file=\"{Path.Combine(dbDir, "freshclam.conf")}\"";
-            var output = await RunProcessAsync(_freshclamPath!, args, ct).ConfigureAwait(false);
+            var output = await RunProcessAsync(_freshclamPath!, args, ct, dbDir).ConfigureAwait(false);
             if (output.ExitCode != 0)
             {
-                log?.Report($"freshclam exited with code {output.ExitCode}. stderr: {output.Stderr}");
+                log?.Report($"freshclam failed with exit code {output.ExitCode}");
+                if (!string.IsNullOrWhiteSpace(output.Stdout))
+                    log?.Report($"freshclam stdout: {output.Stdout.Trim()}");
+                if (!string.IsNullOrWhiteSpace(output.Stderr))
+                    log?.Report($"freshclam stderr: {output.Stderr.Trim()}");
             }
             else
             {
@@ -278,7 +370,8 @@ NotifyClamd false
     private static async Task<(int ExitCode, string Stdout, string Stderr, string[] Lines)> RunProcessAsync(
         string exePath,
         string arguments,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? workingDirectory = null)
     {
         var psi = new ProcessStartInfo(exePath, arguments)
         {
@@ -287,6 +380,11 @@ NotifyClamd false
             RedirectStandardError = true,
             CreateNoWindow = true
         };
+
+        if (!string.IsNullOrWhiteSpace(workingDirectory))
+        {
+            psi.WorkingDirectory = workingDirectory;
+        }
 
         using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start {exePath}");
         var stdoutTask = process.StandardOutput.ReadToEndAsync();

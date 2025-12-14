@@ -30,7 +30,7 @@ Manage WDAC policies without touching XML/CIP files manually.
 | Policy sources                          | `%ProgramData%\TGWST\WDAC` (Balanced, Aggressive, Audit, Revert) <br> System locations (`C:\Windows\schemas\CodeIntegrity`, `C:\Windows\System32\CodeIntegrity`) |
 | Actions                                 | Apply / Remove selected policy |
 | Optional UMCI Enforcement Mode          | Yes |
-| Real-time status indicator              | Shows active policy |
+| Status indicator                        | Shows active policy (based on file presence) |
 
 ---
 
@@ -75,10 +75,9 @@ Lightweight endpoint detection without a SIEM.
 
 - Predefined lookbacks: **1h | 6h | 24h | 72h | 7 days**
 - Detects:
-  - Failed logons  
-  - Process creation anomalies  
-  - Service installations  
-  - Script block activity  
+  - Failed logons
+  - Process creation anomalies
+  - Service installations
 - Bound DataGrid presents timestamp, event source, rule category, message, etc.
 
 ---
@@ -92,7 +91,7 @@ Multi-engine scanning pipeline for file systems and suspicious directories.
   - `C:\ProgramData\TGWST\ClamAV\bin`
   - `C:\ProgramData\TGWST\ClamAV\db`
 - Signatures included (`main.cvd`, `daily.cvd`, `bytecode.cvd`) or pulled fresh on first run
-- Auto-refresh if signatures are > 24 hours old
+- Auto-refresh if signatures are > 24 hours old (requires freshclam.exe)
 - Toggle: **Use ClamAV Deep Scan**
 
 #### YARA & Sigma

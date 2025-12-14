@@ -15,6 +15,7 @@
         </ComboBox>
         <CheckBox x:Name="ClamCheck" Content="Use ClamAV deep scan" Margin="8,0,0,0" IsChecked="{Binding UseClamAv}"/>
         <Button Content="Scan" Click="Scan_Click" Margin="8,0,0,0"/>
+        <Button Content="Update Signatures" Click="UpdateSignatures_Click" Margin="8,0,0,0"/>
         <ProgressBar x:Name="ProgressRing"
                      Width="150"
                      Height="16"
@@ -56,6 +57,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding ClamStatus}" Margin="0,0,12,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding Status}" VerticalAlignment="Center"/>
             <Button Content="Reload Feeds" Margin="8,0,0,0" Click="ReloadFeeds_Click"/>
             <TextBlock Text="{Binding ThreatFeeds.YaraRuleCount, StringFormat='YARA rules: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>

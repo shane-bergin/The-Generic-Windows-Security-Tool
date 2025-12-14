@@ -10,9 +10,16 @@ namespace TGWST.Core.Scan;
 
 public sealed class ScanEngine
 {
-private readonly FileScanEngine _fileEngine = new();
-private readonly SigmaEngine _sigmaEngine = new();
+    private readonly FileScanEngine _fileEngine = new();
+    private readonly SigmaEngine _sigmaEngine = new();
     private readonly ClamAvEngine _clamEngine = new();
+
+    public ClamAvEngine.ClamAvDbStatus GetDatabaseStatus() => _clamEngine.GetDatabaseStatus();
+
+    public async Task UpdateSignaturesAsync(IProgress<string>? log = null, CancellationToken ct = default)
+    {
+        await _clamEngine.EnsureSignaturesAsync(log, ct).ConfigureAwait(false);
+    }
 
     public async Task<IReadOnlyList<ScanResult>> RunScanAsync(
         ScanType type,
@@ -48,7 +55,7 @@ private readonly SigmaEngine _sigmaEngine = new();
         : Array.Empty<ScanResult>();
 
     var clamHits = useClamAv
-        ? await _clamEngine.RunClamScanAsync(type, root, progress: null, log: log, ct: ct)
+        ? await _clamEngine.RunClamScanAsync(type, root, progress: progress, log: log, ct: ct)
         : Array.Empty<ScanResult>();
 
     return hitsList
