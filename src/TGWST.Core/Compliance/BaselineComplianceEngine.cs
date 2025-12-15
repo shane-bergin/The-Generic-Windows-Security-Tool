@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Win32;
+using System.Security;
 using System.Text;
 using System.Text.Json;
 
@@ -28,6 +29,7 @@ public sealed class BaselineComplianceEngine
 
     private static object? ReadValue(RegistryExpectation exp)
     {
+        // SECURITY: Validate registry hive and path
         RegistryKey? hive = exp.Hive.ToUpperInvariant() switch
         {
             "HKLM" => Registry.LocalMachine,
@@ -36,8 +38,29 @@ public sealed class BaselineComplianceEngine
             _ => null
         };
         if (hive == null) return null;
-        using var key = hive.OpenSubKey(exp.Path);
-        return key?.GetValue(exp.Name);
+
+        // SECURITY: Validate registry path doesn't contain dangerous patterns
+        if (string.IsNullOrWhiteSpace(exp.Path) || exp.Path.Contains("..") || exp.Path.Contains("\\.."))
+        {
+            return null;
+        }
+
+        try
+        {
+            // SECURITY: Use read-only access and handle exceptions
+            using var key = hive.OpenSubKey(exp.Path, writable: false);
+            return key?.GetValue(exp.Name);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Expected for restricted registry keys
+            return null;
+        }
+        catch (SecurityException)
+        {
+            // Expected for restricted registry keys
+            return null;
+        }
     }
 
     private static IReadOnlyList<RegistryExpectation> LoadExpectations(string path)

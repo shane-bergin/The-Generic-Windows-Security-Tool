@@ -97,7 +97,7 @@ public sealed class FileScanEngine
                 List<dnYara.ScanResult> matches;
                 lock (_scanLock)
                 {
-                    using var scanner = new Scanner();
+                    var scanner = new Scanner();
                     matches = scanner.ScanFile(file, _rules, YR_SCAN_FLAGS.None);
                 }
 
@@ -130,7 +130,8 @@ public sealed class FileScanEngine
             }
             catch
             {
-                // Silently skip files we can't read (locked, corrupted, etc.)
+                // SECURITY: Silently skip files we can't read (locked, corrupted, etc.)
+                // Avoid logging sensitive file paths or exception details that could expose system information
             }
 
             var done = Interlocked.Increment(ref processed);

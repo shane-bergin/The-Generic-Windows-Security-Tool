@@ -34,7 +34,10 @@ new() { Id = "92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b", Name = "Block Win32 API cal
 new() { Id = "c1db55ab-c21a-4637-bb3f-a12568109d35", Name = "Use advanced protection against ransomware" }
 };
 
-private const string SnapshotPath = @"C:\ProgramData\TGWST\MpPoliciesBaseline.json";
+private static readonly string SnapshotPath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+    "TGWST",
+    "MpPoliciesBaseline.json");
 
 public HardeningProfile GetProfile(HardeningProfileLevel level)
 {

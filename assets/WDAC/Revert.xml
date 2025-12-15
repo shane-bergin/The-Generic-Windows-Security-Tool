@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SiPolicy xmlns="urn:schemas-microsoft-com:sipolicy" PolicyType="Base Policy" FriendlyName="TGWST WDAC Revert">
+  <VersionEx>1.0.3.0</VersionEx>
+  <PolicyID>{6536e5d4-e450-478c-a8e4-7aed1c208a18}</PolicyID>
+  <BasePolicyID>{6536e5d4-e450-478c-a8e4-7aed1c208a18}</BasePolicyID>
+  <PlatformID>{6bb6ddb8-0de1-4c1c-81b0-7097e0a1053e}</PlatformID>
+  <Rules>
+    <Rule>
+      <Option>Enabled:Unsigned System Integrity Policy</Option>
+    </Rule>
+    <Rule>
+      <Option>Enabled:Audit Mode</Option>
+    </Rule>
+  </Rules>
+  <CiSigners />
+  <FileRules />
+  <Signers />
+</SiPolicy>

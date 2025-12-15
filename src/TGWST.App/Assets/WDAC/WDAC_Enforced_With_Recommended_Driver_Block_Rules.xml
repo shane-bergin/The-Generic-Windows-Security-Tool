@@ -1,0 +1,11 @@
+<!--
+This is a placeholder file.
+
+TGWST publishes the full Microsoft "Recommended Driver Block Rules" policy into the installed `WDAC\` folder
+at build/publish time (when available) from:
+
+  %WINDIR%\schemas\CodeIntegrity\ExamplePolicies\RecommendedDriverBlock_Enforced.xml
+
+If you are running from a non-published build and you see this file, use Import Policy... to import the real
+policy XML, or build/publish TGWST on a Windows 11 machine where the example policy exists.
+-->

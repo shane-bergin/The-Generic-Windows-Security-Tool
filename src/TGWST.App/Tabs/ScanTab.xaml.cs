@@ -70,18 +70,21 @@ public partial class ScanTab : System.Windows.Controls.UserControl, INotifyPrope
 
             string? root = null;
 
-            var textLog = new Progress<string>(msg => AppendLog(msg));
+            var textLog = new Progress<string>(msg => Dispatcher.Invoke(() => AppendLog(msg)));
 
-            AppendLog($"Starting scan ({type}) at {(root ?? "default roots")}...");
+            Dispatcher.Invoke(() => AppendLog($"Starting scan ({type}) at {(root ?? "default roots")}..."));
             double lastLogged = 0;
             var progress = new Progress<double>(p =>
             {
-                Progress = p;
-                if (p - lastLogged >= 5)
+                Dispatcher.Invoke(() =>
                 {
-                    AppendLog($"Progress {p:0}%");
-                    lastLogged = p;
-                }
+                    Progress = p;
+                    if (p - lastLogged >= 5)
+                    {
+                        AppendLog($"Progress {p:0}%");
+                        lastLogged = p;
+                    }
+                });
             });
 
             var hits = await _engine.RunScanAsync(type, root, progress, textLog, UseClamAv);

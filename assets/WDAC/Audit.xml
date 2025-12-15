@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SiPolicy xmlns="urn:schemas-microsoft-com:sipolicy" PolicyType="Base Policy" FriendlyName="TGWST WDAC Audit">
+  <VersionEx>1.0.0.0</VersionEx>
+  <PolicyID>{0064c5f8-1b24-46ee-87af-358f3598eab7}</PolicyID>
+  <BasePolicyID>{0064c5f8-1b24-46ee-87af-358f3598eab7}</BasePolicyID>
+  <PlatformID>{86004e49-9fc5-4136-ad79-026c2f5b2cb4}</PlatformID>
+  <Rules>
+    <Rule>
+      <Option>Enabled:Unsigned System Integrity Policy</Option>
+    </Rule>
+    <Rule>
+      <Option>Enabled:Audit Mode</Option>
+    </Rule>
+  </Rules>
+  <CiSigners />
+  <FileRules />
+  <Signers />
+</SiPolicy>

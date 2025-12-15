@@ -179,12 +179,29 @@ public sealed class ClamAvEngine
 
     private string BuildArgs(string target)
     {
+        // SECURITY: Validate and sanitize the target path to prevent command injection
+        if (string.IsNullOrWhiteSpace(target) || !Path.IsPathRooted(target))
+        {
+            throw new ArgumentException("Invalid target path", nameof(target));
+        }
+
+        // SECURITY: Ensure the path doesn't contain dangerous characters that could escape quotes
+        if (target.Contains('"'))
+        {
+            throw new ArgumentException("Target path contains invalid characters", nameof(target));
+        }
+
         var quoted = $"\"{target}\"";
         var exeName = Path.GetFileName(_clamPath);
         var fdPass = exeName != null && exeName.Contains("clamdscan", StringComparison.OrdinalIgnoreCase)
             ? "--fdpass "
             : string.Empty;
-        var dbArg = string.IsNullOrWhiteSpace(_dbPath) ? string.Empty : $"--database=\"{_dbPath}\" ";
+
+        // SECURITY: Validate database path as well
+        var dbArg = string.IsNullOrWhiteSpace(_dbPath) ? string.Empty :
+            _dbPath.Contains('"') ? throw new InvalidOperationException("Database path contains invalid characters") :
+            $"--database=\"{_dbPath}\" ";
+
         return $"--infected --recursive --no-summary {dbArg}{fdPass}{quoted}";
     }
 
@@ -196,7 +213,7 @@ public sealed class ClamAvEngine
             return;
         }
 
-        string dbPath = _dbPath;
+        var dbPath = _dbPath;
         if (string.IsNullOrWhiteSpace(dbPath))
         {
             dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TGWST", "ClamAV", "db");

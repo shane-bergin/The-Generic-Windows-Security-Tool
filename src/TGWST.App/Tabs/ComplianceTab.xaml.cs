@@ -8,6 +8,7 @@ using System.Windows;
 using Microsoft.Win32;
 using TGWST.App.Services;
 using TGWST.Core.Compliance;
+using MessageBox = System.Windows.MessageBox;
 
 namespace TGWST.App.Tabs;
 
@@ -47,15 +48,48 @@ public partial class ComplianceTab : System.Windows.Controls.UserControl
         };
         if (dlg.ShowDialog() == true)
         {
-            var path = dlg.FileName;
+            var sourcePath = dlg.FileName;
+
+            // SECURITY: Validate file extension
+            var ext = Path.GetExtension(sourcePath)?.ToLowerInvariant();
+            if (ext != ".json" && ext != ".csv")
+            {
+                MessageBox.Show("Only .json and .csv files are allowed.", "Invalid File Type", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // SECURITY: Ensure the source file exists and is not a directory
+            if (!File.Exists(sourcePath))
+            {
+                MessageBox.Show("Selected file does not exist.", "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var destDir = ComplianceViewModel.ProgramDataBaselines;
             Directory.CreateDirectory(destDir);
-            var destPath = Path.Combine(destDir, Path.GetFileName(path));
-            File.Copy(path, destPath, overwrite: true);
-            var display = $"Imported: {Path.GetFileNameWithoutExtension(path)}";
-            var info = new ComplianceBaselineInfo(display, destPath);
-            _vm.Baselines.Add(info);
-            _vm.SelectedBaseline = info;
+
+            // SECURITY: Use only the filename to prevent directory traversal
+            var fileName = Path.GetFileName(sourcePath);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                MessageBox.Show("Invalid filename.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var destPath = Path.Combine(destDir, fileName);
+
+            try
+            {
+                File.Copy(sourcePath, destPath, overwrite: true);
+                var display = $"Imported: {Path.GetFileNameWithoutExtension(fileName)}";
+                var info = new ComplianceBaselineInfo(display, destPath);
+                _vm.Baselines.Add(info);
+                _vm.SelectedBaseline = info;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to import file: {ex.Message}", "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }
