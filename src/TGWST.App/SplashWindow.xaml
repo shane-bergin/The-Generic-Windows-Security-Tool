@@ -1,0 +1,27 @@
+<Window x:Class="TGWST.App.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TGWST"
+        Height="300"
+        Width="400"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
+        Background="White"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True">
+    <Grid>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Image Source="Assets/TGWST.png"
+                   Width="150"
+                   Height="150"
+                   Stretch="Uniform"
+                   Margin="0,0,0,20"/>
+            <TextBlock Text="Loading..."
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       Foreground="#333333"/>
+        </StackPanel>
+    </Grid>
+</Window>

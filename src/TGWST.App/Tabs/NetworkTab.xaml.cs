@@ -25,11 +25,6 @@ public NetworkTab()
     if (!_isAdmin)
     {
         StatusText.Text = "WARNING: Admin rights required for firewall actions. View-only mode.";
-        MessageBox.Show(
-            "Administrator rights are required to change Windows Firewall or apply threat blocklists. Please restart the app as Administrator.",
-            "Administrator required",
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
     }
     else
     {
@@ -147,14 +142,7 @@ private async void Block_Click(object sender, RoutedEventArgs e)
 
 private bool EnsureAdminForAction()
 {
-    if (_isAdmin) return true;
-
-    MessageBox.Show(
-        "This action requires Administrator rights. Please restart the app as Administrator.",
-        "Administrator required",
-        MessageBoxButton.OK,
-        MessageBoxImage.Warning);
-    return false;
+    return _isAdmin;
 }
 
 private static bool IsAdministrator()

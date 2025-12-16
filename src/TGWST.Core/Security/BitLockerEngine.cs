@@ -12,23 +12,62 @@ public sealed class BitLockerEngine
     public void EnableOsDrive(string driveLetter, string pin)
     {
         var safePin = SanitizeSecret(pin, nameof(pin));
-        var args = $"-on {driveLetter}: -tpmandpin -pin {safePin} -used";
+        var normalizedDrive = NormalizeDriveLetter(driveLetter);
+        var args = $"-on {normalizedDrive} -tpmandpin -pin {safePin} -used";
         RunManageBde(args);
     }
 
-    public void EnableFixed(string driveLetter) => RunManageBde($"-on {driveLetter}: -used");
+    public void EnableFixed(string driveLetter)
+    {
+        var normalizedDrive = NormalizeDriveLetter(driveLetter);
+        RunManageBde($"-on {normalizedDrive} -used");
+    }
+
     public void EnableRemovable(string driveLetter, string password)
     {
         var safePassword = SanitizeSecret(password, nameof(password));
-        RunManageBde($"-on {driveLetter}: -pw -password {safePassword}");
+        var normalizedDrive = NormalizeDriveLetter(driveLetter);
+        RunManageBde($"-on {normalizedDrive} -pw -password {safePassword}");
     }
-    public void Suspend(string driveLetter, int rebootCount = 1) => RunManageBde($"-protectors -disable {driveLetter}: -rc {rebootCount}");
-    public void Resume(string driveLetter) => RunManageBde($"-protectors -enable {driveLetter}:");
+
+    public void Suspend(string driveLetter, int rebootCount = 1)
+    {
+        var normalizedDrive = NormalizeDriveLetter(driveLetter);
+        RunManageBde($"-protectors -disable {normalizedDrive} -rc {rebootCount}");
+    }
+
+    public void Resume(string driveLetter)
+    {
+        var normalizedDrive = NormalizeDriveLetter(driveLetter);
+        RunManageBde($"-protectors -enable {normalizedDrive}");
+    }
+
     public void AddRecoveryKey(string driveLetter, string outputDir)
     {
         Directory.CreateDirectory(outputDir);
-        RunManageBde($"-protectors -add {driveLetter}: -rk \"{outputDir}\"");
+        var normalizedDrive = NormalizeDriveLetter(driveLetter);
+        RunManageBde($"-protectors -add {normalizedDrive} -rk \"{outputDir}\"");
         if (!Directory.EnumerateFiles(outputDir, "*.bek").Any()) throw new InvalidOperationException("Recovery key not generated");
+    }
+
+    private static string NormalizeDriveLetter(string driveLetter)
+    {
+        if (string.IsNullOrWhiteSpace(driveLetter))
+            throw new ArgumentException("Drive letter cannot be null or empty.", nameof(driveLetter));
+
+        var trimmed = driveLetter.Trim().TrimEnd('\\', '/');
+        if (trimmed.Length == 1 && char.IsLetter(trimmed[0]))
+        {
+            return $"{trimmed}:";
+        }
+        else if (trimmed.Length == 2 && char.IsLetter(trimmed[0]) && trimmed[1] == ':')
+        {
+            return trimmed;
+        }
+        else
+        {
+            throw new ArgumentException($"Invalid drive letter format: '{driveLetter}'. Expected format: 'C' or 'C:'.", nameof(driveLetter));
+        }
     }
 
     private static string RunManageBde(string args)

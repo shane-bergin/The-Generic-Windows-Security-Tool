@@ -145,7 +145,28 @@ try {
         /p:PublishTrimmed=false `
         -o $publishDir
 
+    Write-Host "Publishing TGWST Updater..."
+    $updaterProject = Join-Path $repoRoot "src\TGWST.Updater\TGWST.Updater.csproj"
+    dotnet publish $updaterProject `
+        -c $Configuration `
+        -r $RuntimeIdentifier `
+        --self-contained true `
+        /p:PublishSingleFile=true `
+        /p:IncludeAllContentForSelfExtract=true `
+        /p:PublishTrimmed=false `
+        -o $publishDir
+
     Copy-Stage -source $publishDir -destination $stageDir
+    $wdacStage = Join-Path $stageDir "WDAC"
+    if (-not (Test-Path $wdacStage)) {
+        throw "WDAC payload missing from publish output ($wdacStage). Ensure Assets\\WDAC content is copied during publish."
+    }
+    if (-not (Get-ChildItem $wdacStage -Filter *.xml -ErrorAction SilentlyContinue)) {
+        throw "No WDAC XML files found in $wdacStage. Verify wdac-shipped-policies.json and XML assets are included."
+    }
+    if (-not (Test-Path (Join-Path $wdacStage "wdac-shipped-policies.json"))) {
+        Write-Warning "wdac-shipped-policies.json not found in $wdacStage; WDAC manifest will not be installed."
+    }
     # Remove Mark-of-the-Web from all staged files
     Get-ChildItem $stageDir -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
 
@@ -278,6 +299,3 @@ try {
     Write-Error $_
     exit 1
 }
-
-
-

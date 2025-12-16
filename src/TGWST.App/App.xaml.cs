@@ -16,11 +16,14 @@ public partial class App : System.Windows.Application
 {
     private Forms.NotifyIcon? _trayIcon;
     private Icon? _trayIconHandle;
+    private SplashWindow? _splashWindow;
     private const string AsrExecutableBlockGuid = "d4f940ab-401b-4efc-aadc-ad5f3c50688a";
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        WarnIfAsrLikelyBlocking();
+        // Show splash screen
+        _splashWindow = new SplashWindow();
+        _splashWindow.Show();
 
         if (!IsAdministrator())
         {
@@ -61,6 +64,10 @@ public partial class App : System.Windows.Application
             }
             // If user chose Cancel or elevation failed, continue in limited mode (UI loads, admin-required features may fail).
         }
+
+        // Close splash screen before showing main UI
+        _splashWindow?.Close();
+        _splashWindow = null;
 
         InitTrayIcon();
         base.OnStartup(e);

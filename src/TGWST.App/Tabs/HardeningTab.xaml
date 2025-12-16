@@ -38,10 +38,31 @@
                            TextWrapping="Wrap"
                            Margin="0,0,0,8"/>
 
-                <ComboBox ItemsSource="{Binding Policies}"
-                          DisplayMemberPath="BaseName"
-                          SelectedItem="{Binding SelectedPolicy, Mode=TwoWay}"
-                          Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <ComboBox ItemsSource="{Binding Policies}"
+                              SelectedItem="{Binding SelectedPolicy, Mode=TwoWay}"
+                              Width="360">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding FriendlyName}" />
+                                    <TextBlock FontSize="11" Foreground="Gray">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0} | {1} | {2}">
+                                                <Binding Path="BaseName"/>
+                                                <Binding Path="Source"/>
+                                                <Binding Path="Version"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Content="Refresh" Width="80" Margin="8,0,0,0" Click="WdacRefresh_Click"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding SelectedDetails}" TextWrapping="Wrap" Margin="0,0,0,8"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <CheckBox Content="Enforce (UMCI)"
@@ -55,11 +76,24 @@
                     <Button Content="Remove"
                             Click="WdacRemove_Click"
                             Margin="0,0,8,0"/>
-                    <Button Content="Import Policy..."
-                            Click="WdacImport_Click"/>
+                    <Button Content="Export..."
+                            Click="WdacExport_Click"
+                            IsEnabled="{Binding SelectedPolicy, Converter={StaticResource NullToBool}}"/>
                 </StackPanel>
 
-                <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="Import Policy..."
+                            Click="WdacImport_Click"
+                            Margin="0,0,8,0"/>
+                    <Button Content="Compile XML → CIP"
+                            Click="WdacCompile_Click"
+                            IsEnabled="{Binding SelectedPolicy.HasXml, TargetNullValue=False}"
+                            Margin="0,0,8,0"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding LastAction}" TextWrapping="Wrap" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LastError}" TextWrapping="Wrap" Foreground="Firebrick"/>
             </StackPanel>
         </GroupBox>
 

@@ -94,9 +94,66 @@ public partial class HardeningTab : System.Windows.Controls.UserControl
         var result = await Task.Run(() => _wdacEngine.ImportPolicy(dialog.FileName));
         _wdacVm.Status = result.Success
             ? $"Imported: {Path.GetFileName(result.AffectedPath ?? dialog.FileName)}"
-            : result.Message;
+            : BuildWdacError(result);
 
-        await RefreshWdacPoliciesAsync(selectBaseName: Path.GetFileNameWithoutExtension(result.AffectedPath ?? dialog.FileName));
+        await RefreshWdacPoliciesAsync(selectBaseName: result.BaseName ?? Path.GetFileNameWithoutExtension(dialog.FileName));
+        UpdateWdacLogStatus();
+    }
+
+    private async void WdacCompile_Click(object sender, RoutedEventArgs e)
+    {
+        var policy = _wdacVm.SelectedPolicy;
+        if (policy?.XmlPath == null)
+        {
+            _wdacVm.Status = "Selected policy has no XML to compile.";
+            return;
+        }
+
+        _wdacVm.Status = "Compiling WDAC XML...";
+        var result = await Task.Run(() => _wdacEngine.CompileXmlToCip(policy.XmlPath, out var _));
+        _wdacVm.Status = result.Success
+            ? $"Compiled: {Path.GetFileName(result.AffectedPath ?? policy.XmlPath)}"
+            : BuildWdacError(result);
+
+        await RefreshWdacPoliciesAsync(selectBaseName: policy.BaseName);
+        UpdateWdacLogStatus();
+    }
+
+    private async void WdacExport_Click(object sender, RoutedEventArgs e)
+    {
+        var policy = _wdacVm.SelectedPolicy;
+        if (policy == null)
+        {
+            _wdacVm.Status = "Select a policy to export.";
+            return;
+        }
+
+        var source = policy.CipPath ?? policy.XmlPath;
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            _wdacVm.Status = "Selected policy has no file to export.";
+            return;
+        }
+
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            FileName = Path.GetFileName(source),
+            Filter = "WDAC Policy (*.cip;*.xml)|*.cip;*.xml|All files (*.*)|*.*",
+            OverwritePrompt = false
+        };
+
+        if (dlg.ShowDialog() != true) return;
+
+        _wdacVm.Status = "Exporting WDAC policy...";
+        var result = await Task.Run(() => _wdacEngine.ExportPolicy(policy, dlg.FileName));
+        _wdacVm.Status = result.Success ? result.Message : BuildWdacError(result);
+        UpdateWdacLogStatus();
+    }
+
+    private async void WdacRefresh_Click(object sender, RoutedEventArgs e)
+    {
+        await RefreshWdacPoliciesAsync(_wdacVm.SelectedPolicy?.BaseName);
+        UpdateWdacLogStatus();
     }
 
     private async void WdacApply_Click(object sender, RoutedEventArgs e)
@@ -118,6 +175,7 @@ public partial class HardeningTab : System.Windows.Controls.UserControl
 
         _wdacVm.Status = result.Success ? result.Message : BuildWdacError(result);
         await RefreshWdacPoliciesAsync(selectBaseName: policy.BaseName);
+        UpdateWdacLogStatus();
     }
 
     private async void WdacRemove_Click(object sender, RoutedEventArgs e)
@@ -147,49 +205,88 @@ public partial class HardeningTab : System.Windows.Controls.UserControl
 
         _wdacVm.Status = result.Success ? result.Message : BuildWdacError(result);
         await RefreshWdacPoliciesAsync();
+        UpdateWdacLogStatus();
     }
 
     private async Task RefreshWdacPoliciesAsync(string? selectBaseName = null)
     {
         var seed = await Task.Run(() => _wdacEngine.EnsureProgramDataWdacPolicies());
-        var policies = await Task.Run(() => _wdacEngine.EnumeratePolicies());
+        var catalog = await Task.Run(() => _wdacEngine.EnumeratePolicies());
 
-        _wdacVm.LoadPolicies(policies, selectBaseName);
+        var previousStatus = _wdacVm.Status;
+        _wdacVm.LoadPolicies(catalog, selectBaseName);
+        var loadStatus = _wdacVm.Status;
+
+        var notes = new List<string>();
         if (!seed.Success && seed.Errors.Count > 0)
-        {
-            _wdacVm.Status = $"{seed.Message} ({string.Join("; ", seed.Errors.Take(3))})";
-        }
+            notes.Add($"{seed.Message} ({string.Join("; ", seed.Errors.Take(3))})");
         else if (seed.CopiedFiles.Count > 0)
+            notes.Add(seed.Message);
+
+        if (catalog.Errors.Count > 0)
+            notes.Add(string.Join("; ", catalog.Errors.Take(3)));
+
+        var collisions = catalog.Policies.Where(p => !string.IsNullOrWhiteSpace(p.CollisionWarning)).Select(p => $"{p.BaseName}: {p.CollisionWarning}").ToArray();
+        if (collisions.Length > 0)
+            notes.Add($"Collision warning: {string.Join("; ", collisions)}");
+
+        if (notes.Count > 0)
         {
-            _wdacVm.Status = seed.Message;
+            _wdacVm.Status = string.Join(" | ", notes);
         }
-        else if (string.IsNullOrWhiteSpace(_wdacVm.Status))
+        else if (!string.IsNullOrWhiteSpace(loadStatus) && !string.Equals(loadStatus, "Ready", StringComparison.OrdinalIgnoreCase))
+        {
+            _wdacVm.Status = loadStatus;
+        }
+        else if (!string.IsNullOrWhiteSpace(previousStatus))
+        {
+            _wdacVm.Status = previousStatus;
+        }
+        else
         {
             _wdacVm.Status = "Ready";
         }
+
+        UpdateWdacLogStatus();
     }
 
     private static string BuildWdacError(WdacEngine.WdacOperationResult result)
     {
         var msg = result.Message;
-        if (!string.IsNullOrWhiteSpace(result.Stderr))
-            msg += $" ({result.Stderr.Trim()})";
+        var detail = new[] { result.Stderr, result.Stdout, result.Details }
+            .FirstOrDefault(d => !string.IsNullOrWhiteSpace(d));
+        if (!string.IsNullOrWhiteSpace(detail))
+            msg += $" ({detail.Trim()})";
+        if (result.ExitCode.HasValue)
+            msg += $" [exit {result.ExitCode}]";
         return msg;
+    }
+
+    private void UpdateWdacLogStatus()
+    {
+        var (lastAction, lastError) = _wdacEngine.GetLastActionAndError();
+        _wdacVm.LastAction = lastAction == null
+            ? "Last action: none logged yet."
+            : $"Last action: {lastAction.Action} - {lastAction.Message} ({lastAction.TimestampUtc.ToLocalTime():g})";
+        _wdacVm.LastError = lastError == null
+            ? string.Empty
+            : $"Last error: {lastError.Action} - {lastError.Message}";
     }
 }
 
 public sealed class WdacSectionViewModel : INotifyPropertyChanged
 {
-    public ObservableCollection<WdacEngine.WdacPolicy> Policies { get; } = new();
+    public ObservableCollection<WdacEngine.WdacPolicyInfo> Policies { get; } = new();
 
-    private WdacEngine.WdacPolicy? _selectedPolicy;
-    public WdacEngine.WdacPolicy? SelectedPolicy
+    private WdacEngine.WdacPolicyInfo? _selectedPolicy;
+    public WdacEngine.WdacPolicyInfo? SelectedPolicy
     {
         get => _selectedPolicy;
         set
         {
             _selectedPolicy = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedDetails));
         }
     }
 
@@ -215,12 +312,58 @@ public sealed class WdacSectionViewModel : INotifyPropertyChanged
         }
     }
 
+    private string _lastAction = string.Empty;
+    public string LastAction
+    {
+        get => _lastAction;
+        set
+        {
+            _lastAction = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private string _lastError = string.Empty;
+    public string LastError
+    {
+        get => _lastError;
+        set
+        {
+            _lastError = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string SelectedDetails
+    {
+        get
+        {
+            if (SelectedPolicy == null) return "Select a WDAC policy to see details.";
+
+            var parts = new[]
+            {
+                SelectedPolicy.FriendlyName ?? SelectedPolicy.BaseName,
+                string.IsNullOrWhiteSpace(SelectedPolicy.PolicyId) ? null : $"PolicyID: {SelectedPolicy.PolicyId}",
+                string.IsNullOrWhiteSpace(SelectedPolicy.Version) ? null : $"Version: {SelectedPolicy.Version}",
+                SelectedPolicy.IsAuditMode ? "Audit" : "Enforced",
+                $"UMCI {(SelectedPolicy.UmciEnabled ? "On" : "Off")}",
+                $"Source: {SelectedPolicy.Source}"
+            }.Where(p => !string.IsNullOrWhiteSpace(p));
+
+            var details = string.Join(" | ", parts);
+            if (!string.IsNullOrWhiteSpace(SelectedPolicy.CollisionWarning))
+                details += $" (Warning: {SelectedPolicy.CollisionWarning})";
+
+            return details;
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public void LoadPolicies(IReadOnlyList<WdacEngine.WdacPolicy> policies, string? selectBaseName = null)
+    public void LoadPolicies(WdacEngine.WdacCatalogResult catalog, string? selectBaseName = null)
     {
         Policies.Clear();
-        foreach (var p in policies)
+        foreach (var p in catalog.Policies)
             Policies.Add(p);
 
         if (!string.IsNullOrWhiteSpace(selectBaseName))
@@ -231,6 +374,19 @@ public sealed class WdacSectionViewModel : INotifyPropertyChanged
 
         if (SelectedPolicy == null && Policies.Count > 0)
             SelectedPolicy = Policies[0];
+
+        if (catalog.Errors.Count > 0)
+        {
+            Status = $"Catalog loaded with warnings: {string.Join("; ", catalog.Errors)}";
+        }
+        else if (Policies.Count == 0)
+        {
+            Status = "No WDAC policies found in ProgramData.";
+        }
+        else
+        {
+            Status = "Ready";
+        }
     }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>

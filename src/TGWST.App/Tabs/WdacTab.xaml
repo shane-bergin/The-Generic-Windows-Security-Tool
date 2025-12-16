@@ -3,7 +3,9 @@
         <StackPanel>
             <TextBlock Text="WDAC moved" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <TextBlock TextWrapping="Wrap"
-                       Text="WDAC controls have moved into the Hardening tab (below the log). Use that section to import, select, apply, and remove policies."/>
+                       Text="WDAC controls now live in the Hardening tab (below the log). Use that section to import, compile, export, apply, and remove policies."
+                       Margin="0,0,0,8"/>
+            <Button Content="Open WDAC controls" Width="180" Click="OpenHardening_Click"/>
         </StackPanel>
     </Grid>
 </UserControl>

@@ -19,10 +19,12 @@
       <Directory Id="ProgramMenuFolder">
         <Directory Id="ProgramMenuDir" Name="The Generic Windows Security Tool" />
       </Directory>
+      <Directory Id="DesktopFolder" />
       <Directory Id="CommonAppDataFolder">
         <Directory Id="TGWSTAppData" Name="TGWST">
           <Directory Id="CLAMAVDIR" Name="ClamAV" />
           <Directory Id="BaselinesDir" Name="Baselines" />
+          <Directory Id="WdacDataDir" Name="WDAC" />
         </Directory>
       </Directory>
     </Directory>
@@ -31,7 +33,11 @@
       <ComponentGroupRef Id="HarvestedFiles" />
       <ComponentGroupRef Id="ClamAvFiles" />
       <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="BaselineFile" />
+      <ComponentRef Id="WdacDataFolder" />
+      <ComponentRef Id="RemoveAppDataDir" />
+      <ComponentRef Id="RemoveInstallDir" />
     </Feature>
 
     <UIRef Id="WixUI_InstallDir" />
@@ -57,9 +63,50 @@
   </Fragment>
 
   <Fragment>
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="*">
+        <Shortcut Id="TGWSTDesktopShortcut"
+                  Name="TGWST"
+                  Target="[INSTALLFOLDER]$(var.AppExeName)"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Description="The Generic Windows Security Tool"
+                  Icon="AppIcon" />
+        <RegistryValue Root="HKCU" Key="Software\TGWST" Name="DesktopShortcut" Value="1" Type="integer" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
     <DirectoryRef Id="BaselinesDir">
       <Component Id="BaselineFile" Guid="*">
         <File Id="TGWST_Balanced.csv" Source="assets\Baselines\TGWST_Balanced.csv" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="WdacDataDir">
+      <Component Id="WdacDataFolder" Guid="*" NeverOverwrite="yes" Win64="yes" KeyPath="yes">
+        <CreateFolder />
+        <RemoveFolder Id="RemoveWdacDataDir" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="TGWSTAppData">
+      <Component Id="RemoveAppDataDir" Guid="*">
+        <RemoveFolder Id="RemoveTGWSTAppData" On="uninstall" Directory="TGWSTAppData" />
+        <RegistryValue Root="HKCU" Key="Software\TGWST" Name="Cleanup" Value="1" Type="integer" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="RemoveInstallDir" Guid="*">
+        <RemoveFolder Id="RemoveTGWSTInstallDir" On="uninstall" Directory="INSTALLFOLDER" />
+        <RegistryValue Root="HKLM" Key="Software\TGWST" Name="Cleanup" Value="1" Type="integer" KeyPath="yes" />
       </Component>
     </DirectoryRef>
   </Fragment>

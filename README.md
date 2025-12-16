@@ -1,4 +1,4 @@
-# The Generic Windows Security Tool (TGWST)
+﻿# The Generic Windows Security Tool (TGWST)
 
 ![TGWST](https://img.shields.io/badge/TGWST-Windows%2011%20Security%20Tool-blue?logo=windows&logoColor=white&style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2011%20Pro%20x64-0078D4?logo=windows&style=flat-square)
@@ -17,22 +17,32 @@ Most operations require **Administrator privileges**.
 ### Hardening (ASR / Defender / Firewall / Fortress Mode)
 - Microsoft Defender settings (real-time protection, network protection, CFA, etc.)
 - Attack Surface Reduction (ASR) rule profiles
-- **One-click Fortress Mode** – blocks all inbound connections, allows outbound
+- **One-click Fortress Mode** - blocks all inbound connections, allows outbound
 - Restoration to earliest captured baseline (`%ProgramData%\TGWST`)
 
 ---
 
-### WDAC – Windows Defender Application Control
-Manage WDAC policies without touching XML/CIP files manually.
+### WDAC - Windows Defender Application Control
+Manage shipped and imported WDAC policies from `%ProgramData%\TGWST\WDAC` (seeded from `%ProgramFiles%\TGWST\WDAC` on first run).
 
-| Capability                              | Details |
-|-----------------------------------------|---------|
-| Policy sources                          | `%ProgramData%\TGWST\WDAC` (Balanced, Aggressive, Audit, Revert) <br> System locations (`C:\Windows\schemas\CodeIntegrity`, `C:\Windows\System32\CodeIntegrity`) |
-| Actions                                 | Apply / Remove selected policy |
-| Optional UMCI Enforcement Mode          | Yes |
-| Status indicator                        | Shows active policy (based on file presence) |
+**Shipped policy set** (`src/TGWST.App/Assets/WDAC/wdac-shipped-policies.json`):
+- `WDAC_Audit_Base.xml` - FriendlyName: *TGWST WDAC Audit Base*, v10.0.3.0, Audit, UMCI on.
+- `WDAC_Enforced_Enterprise.xml` - *TGWST WDAC Enforced - Enterprise*, v10.0.3.0, Enforced, UMCI on.
+- `WDAC_Enforced_Microsoft_Only.xml` - *TGWST WDAC Enforced - Microsoft Only*, v10.0.3.0, Enforced, UMCI on.
+- `WDAC_Enforced_MS_And_Store.xml` - *TGWST WDAC Enforced - Microsoft + Store*, v10.0.3.0, Enforced, UMCI on.
+- `WDAC_Enforced_With_Recommended_Driver_Block_Rules.xml` - *Microsoft Recommended Driver Block Rules (Enforced)*, v10.0.27805.0, supplemental driver block list (UMCI off).
 
----
+**Capabilities**
+- Import/export XML or CIP with collision-safe naming; XML->CIP compile with stdout/stderr capture and deterministic output alongside the XML.
+- Enumerate XML/CIP pairs as single entries with source metadata (shipped/imported/generated) and duplicate/collision detection.
+- Apply with UMCI toggle, track applied PolicyIDs under ProgramData, and remove only TGWST-tracked policies.
+- Structured action log (import/compile/apply/remove) surfaced in the Hardening tab.
+
+**Safe rollout (recommended)**
+1. Apply `WDAC_Audit_Base.xml` in audit mode to observe impact.
+2. Review event logs, tune as needed, then shift to an enforced baseline (Enterprise, Microsoft-only, or Microsoft+Store).
+3. Layer the Microsoft recommended driver block policy as a supplemental policy.
+4. Use Export to archive the applied CIP before broad deployment.
 
 ### BitLocker Management
 Central control for OS, fixed, and removable drives.
@@ -46,7 +56,7 @@ Central control for OS, fixed, and removable drives.
 
 ---
 
-### Compliance – Registry Baseline Evaluation
+### Compliance â€“ Registry Baseline Evaluation
 Evaluate system state against formal security baselines.
 
 - Baseline dropdown populated from `%ProgramData%\TGWST\Baselines`
@@ -54,14 +64,14 @@ Evaluate system state against formal security baselines.
   - `CIS_L2_Windows11.csv`
   - `CISA_Recommended.csv`
   - `TGWST_Balanced.csv`
-- “Browse…” for additional JSON/CSV baselines
+- â€œBrowseâ€¦â€ for additional JSON/CSV baselines
 - Results table: **Registry Path | Expected | Actual | Compliant**
 - Summary: **e.g., Compliant 142/198**
 - Selected baseline auto-propagates to Drift Detection
 
 ---
 
-### Drift Detection – Continuous Baseline Monitoring
+### Drift Detection â€“ Continuous Baseline Monitoring
 - Baseline auto-filled from last Compliance selection
 - Interval selector: **30s | 60s | 300s | 900s**
 - Start / Stop monitoring
@@ -82,7 +92,7 @@ Lightweight endpoint detection without a SIEM.
 
 ---
 
-### Scan – YARA, Sigma, and Packaged ClamAV
+### Scan â€“ YARA, Sigma, and Packaged ClamAV
 Multi-engine scanning pipeline for file systems and suspicious directories.
 
 #### ClamAV Integration (Packaged)
@@ -114,3 +124,4 @@ Generate the MSI:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer\build-msi.ps1
+
