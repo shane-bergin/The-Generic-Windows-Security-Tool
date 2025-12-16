@@ -170,7 +170,15 @@ public sealed class WdacEngine
                     var mappedDestPath = Path.Combine(ProgramDataPath, mappedDestName);
                     if (File.Exists(mappedDestPath))
                     {
-                        skipped.Add(mappedDestName);
+                        if (ShouldRefreshSeededFile(sourcePath, mappedDestPath))
+                        {
+                            File.Copy(sourcePath, mappedDestPath, overwrite: true);
+                            copied.Add(Path.GetFileName(mappedDestPath));
+                        }
+                        else
+                        {
+                            skipped.Add(mappedDestName);
+                        }
                         continue;
                     }
 
@@ -935,6 +943,25 @@ public sealed class WdacEngine
         catch
         {
             // best-effort
+        }
+    }
+
+    private static bool ShouldRefreshSeededFile(string sourcePath, string destPath)
+    {
+        try
+        {
+            var source = new FileInfo(sourcePath);
+            var dest = new FileInfo(destPath);
+            if (!dest.Exists) return true;
+
+            if (source.Length != dest.Length)
+                return true;
+
+            return source.LastWriteTimeUtc > dest.LastWriteTimeUtc.AddSeconds(1);
+        }
+        catch
+        {
+            return false;
         }
     }
 

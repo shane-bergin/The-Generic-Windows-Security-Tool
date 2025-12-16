@@ -116,6 +116,74 @@ NotifyClamd false
     }
 }
 
+function Get-GitCommitId {
+    param([string]$repoRoot)
+    try {
+        $commit = git -C $repoRoot rev-parse --short HEAD 2>$null
+        if ($LASTEXITCODE -eq 0) { return $commit.Trim() }
+    } catch { }
+    return ""
+}
+
+function Get-GitCommitCount {
+    param([string]$repoRoot)
+    try {
+        $count = git -C $repoRoot rev-list --count HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $count -match '^\d+$') { return [int]$count }
+    } catch { }
+    return $null
+}
+
+function Resolve-ProductVersion {
+    param(
+        [string]$rawVersion,
+        [string]$repoRoot
+    )
+
+    $parsed = $null
+    if (-not [Version]::TryParse($rawVersion, [ref]$parsed)) {
+        $parsed = [Version]"1.0.0.0"
+    }
+
+    $build = $parsed.Build
+    if ($build -lt 0) { $build = 0 }
+    if ($build -gt 65000) { $build = 65000 }
+    $revision = $parsed.Revision
+    if ($revision -lt 0) { $revision = 0 }
+    if ($revision -gt 65000) { $revision = 65000 }
+
+    $commitCount = Get-GitCommitCount -repoRoot $repoRoot
+    if ($commitCount -ne $null) {
+        $revision = [Math]::Min($commitCount, 65000)
+    } elseif ($revision -eq 0) {
+        $revision = [int](Get-Date -UFormat %j)
+    }
+
+    return "{0}.{1}.{2}.{3}" -f $parsed.Major, $parsed.Minor, $build, $revision
+}
+
+function Write-BuildStamp {
+    param(
+        [string]$targetDir,
+        [string]$version,
+        [string]$commit
+    )
+
+    if (-not (Test-Path $targetDir)) {
+        New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+    }
+
+    $path = Join-Path $targetDir "build-info.txt"
+    $lines = @(
+        "Version=$version"
+        "Commit=$commit"
+        "BuildTimeUtc=$([DateTime]::UtcNow.ToString('o'))"
+    )
+
+    Set-Content -Path $path -Value $lines -Encoding ASCII
+    return $path
+}
+
 try {
     $repoRoot = Split-Path -Parent $PSScriptRoot
     $project = Join-Path $repoRoot "src\TGWST.App\TGWST.App.csproj"
@@ -165,7 +233,7 @@ try {
         throw "No WDAC XML files found in $wdacStage. Verify wdac-shipped-policies.json and XML assets are included."
     }
     if (-not (Test-Path (Join-Path $wdacStage "wdac-shipped-policies.json"))) {
-        Write-Warning "wdac-shipped-policies.json not found in $wdacStage; WDAC manifest will not be installed."
+        throw "wdac-shipped-policies.json not found in $wdacStage. WDAC shipped manifest is required in the staging payload."
     }
     # Remove Mark-of-the-Web from all staged files
     Get-ChildItem $stageDir -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
@@ -193,13 +261,21 @@ try {
     }
 
     $versionInfo = (Get-Item $exePath).VersionInfo
-    $productVersion = $versionInfo.FileVersion
-    if (-not $productVersion) { $productVersion = $versionInfo.ProductVersion }
-    if (-not $productVersion) { $productVersion = "1.0.0.0" }
-    $productVersion = ($productVersion -split '[^0-9\.]')[0]
-    if (-not [Version]::TryParse($productVersion, [ref]([Version]::new()))) {
-        $productVersion = "1.0.0.0"
-    }
+    $rawVersion = $versionInfo.FileVersion
+    if (-not $rawVersion) { $rawVersion = $versionInfo.ProductVersion }
+    if (-not $rawVersion) { $rawVersion = "1.0.0.0" }
+    $rawVersion = ($rawVersion -split '[^0-9\.]')[0]
+    $productVersion = Resolve-ProductVersion -rawVersion $rawVersion -repoRoot $repoRoot
+    Write-Host "Using product version: $productVersion"
+
+    $commitId = Get-GitCommitId -repoRoot $repoRoot
+    if (-not $commitId) { $commitId = "unknown" }
+
+    $stampPaths = @(
+        Write-BuildStamp -targetDir $publishDir -version $productVersion -commit $commitId
+        Write-BuildStamp -targetDir $stageDir -version $productVersion -commit $commitId
+    )
+    Write-Host "Build stamp written to: $($stampPaths -join ', ')"
 
     $heat = Get-WixTool "heat.exe"
     $candle = Get-WixTool "candle.exe"

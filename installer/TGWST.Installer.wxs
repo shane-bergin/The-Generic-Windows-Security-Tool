@@ -3,7 +3,9 @@
   <Product Id="*" Name="The Generic Windows Security Tool" Language="1033" Version="$(var.ProductVersion)" Manufacturer="TGWST" UpgradeCode="BE64B133-8D56-45A3-9C7E-5F89A0A3CC01">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" />
 
-    <MajorUpgrade DowngradeErrorMessage="A later version of TGWST is already installed." />
+    <MajorUpgrade DowngradeErrorMessage="A later version of TGWST is already installed."
+                  AllowSameVersionUpgrades="yes"
+                  Schedule="afterInstallValidate" />
     <MediaTemplate EmbedCab="yes" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
 
@@ -86,7 +88,7 @@
 
   <Fragment>
     <DirectoryRef Id="WdacDataDir">
-      <Component Id="WdacDataFolder" Guid="*" NeverOverwrite="yes" Win64="yes" KeyPath="yes">
+      <Component Id="WdacDataFolder" Guid="A21A46F1-5D62-47B4-A6C2-38B5AD2B8978" NeverOverwrite="yes" Win64="yes" KeyPath="yes">
         <CreateFolder />
         <RemoveFolder Id="RemoveWdacDataDir" On="uninstall" />
       </Component>
@@ -104,7 +106,7 @@
 
   <Fragment>
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="RemoveInstallDir" Guid="*">
+      <Component Id="RemoveInstallDir" Guid="*" Win64="yes">
         <RemoveFolder Id="RemoveTGWSTInstallDir" On="uninstall" Directory="INSTALLFOLDER" />
         <RegistryValue Root="HKLM" Key="Software\TGWST" Name="Cleanup" Value="1" Type="integer" KeyPath="yes" />
       </Component>

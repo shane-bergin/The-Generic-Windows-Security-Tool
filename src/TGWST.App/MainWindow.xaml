@@ -8,6 +8,7 @@
 <StackPanel Orientation="Horizontal" Margin="8" VerticalAlignment="Center">
 <Image Source="Assets/TGWST.png" Height="32" Width="32" Stretch="Uniform" Margin="0,0,8,0"/>
 <TextBlock Text="The Generic Windows Security Tool" VerticalAlignment="Center" FontWeight="Bold" />
+<TextBlock x:Name="VersionText" Text="" VerticalAlignment="Center" Foreground="Gray" Margin="12,0,0,0"/>
 </StackPanel>
 
 <TabControl Margin="8" Grid.Row="1">

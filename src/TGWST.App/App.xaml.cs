@@ -1,13 +1,15 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Security.Principal;
 using System.Text.Json;
-using System.Collections.Generic;
-using System.Drawing;
-using Forms = System.Windows.Forms;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
+using Forms = System.Windows.Forms;
 using MessageBox = System.Windows.MessageBox;
 
 namespace TGWST.App;
@@ -18,59 +20,172 @@ public partial class App : System.Windows.Application
     private Icon? _trayIconHandle;
     private SplashWindow? _splashWindow;
     private const string AsrExecutableBlockGuid = "d4f940ab-401b-4efc-aadc-ad5f3c50688a";
+    private int _adminPromptShown;
+    private int _asrPromptShown;
+    private int _fatalUiNotified;
+    private string[] _startupArgs = Array.Empty<string>();
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        // Show splash screen
+        _startupArgs = e.Args ?? Array.Empty<string>();
+        StartupLogger.Initialize(BuildInfo.Current);
+        HookExceptionHandlers();
+        StartupLogger.LogMilestone("App start");
+
         _splashWindow = new SplashWindow();
         _splashWindow.Show();
+        StartupLogger.LogMilestone("Splash shown");
 
-        if (!IsAdministrator())
+        StartupLogger.LogMilestone("DI init start");
+        StartupLogger.LogMilestone("DI init complete");
+
+        try
         {
-            const string title = "Administrator Required";
-            const string message = "Administrator rights are required for hardening and ASR features. Click OK to relaunch with elevated permissions, or Cancel to continue in limited mode.";
+            MainWindow = new MainWindow();
+            StartupLogger.LogMilestone("MainWindow created");
 
-            var result = MessageBox.Show(message, title, MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
-            if (result == MessageBoxResult.OK)
+            MainWindow.ContentRendered += (_, _) =>
             {
-                try
-                {
-                    var exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
-                    if (!string.IsNullOrWhiteSpace(exePath))
-                    {
-                        var psi = new ProcessStartInfo(exePath)
-                        {
-                            UseShellExecute = true,
-                            Verb = "runas",
-                            WorkingDirectory = AppContext.BaseDirectory,
-                            Arguments = string.Join(" ", e.Args.Select(a => $"\"{a}\""))
-                        };
-                        var started = Process.Start(psi);
-                        if (started != null)
-                        {
-                            Shutdown();
-                            return;
-                        }
-                    }
-                }
-                catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
-                {
-                    MessageBox.Show("Elevation was cancelled; continuing without admin rights. Some features may fail.", title, MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to relaunch elevated: {ex.Message}\nContinuing without admin rights.", title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
+                StartupLogger.LogMilestone("MainWindow shown");
+                CloseSplash();
+            };
+
+            base.OnStartup(e);
+
+            MainWindow.Show();
+            MainWindow.Activate();
+            StartupLogger.LogMilestone("MainWindow show invoked");
+
+            InitTrayIcon();
+            _ = Dispatcher.InvokeAsync(RunPostShowInitAsync, DispatcherPriority.Background);
+        }
+        catch (Exception ex)
+        {
+            StartupLogger.LogException("OnStartup", ex);
+            CloseSplash();
+            TryShowFatal("Failed to start TGWST", ex);
+            Shutdown(-1);
+        }
+    }
+
+    private void HookExceptionHandlers()
+    {
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        StartupLogger.LogException("DispatcherUnhandledException", e.Exception);
+        if (Interlocked.Exchange(ref _fatalUiNotified, 1) == 0)
+            TryShowFatal("An unexpected error occurred", e.Exception);
+
+        e.Handled = true;
+        Shutdown(-1);
+    }
+
+    private void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
+    {
+        var ex = e.ExceptionObject as Exception ?? new Exception(e.ExceptionObject?.ToString() ?? "Unknown fatal error");
+        StartupLogger.LogException("AppDomain.UnhandledException", ex);
+        if (Interlocked.Exchange(ref _fatalUiNotified, 1) == 0)
+            TryShowFatal("A fatal error occurred", ex);
+    }
+
+    private async Task RunPostShowInitAsync()
+    {
+        StartupLogger.LogMilestone("Post-show async init started");
+        try
+        {
+            await Task.Yield();
+
+            if (await MaybePromptForElevationAsync()) return;
+
+            var asrWarning = await Task.Run(TryGetAsrWarningMessage);
+            if (!string.IsNullOrWhiteSpace(asrWarning) && Interlocked.Exchange(ref _asrPromptShown, 1) == 0)
+            {
+                await Dispatcher.InvokeAsync(() =>
+                    MessageBox.Show(asrWarning, "ASR may block TGWST", MessageBoxButton.OK, MessageBoxImage.Warning),
+                    DispatcherPriority.Background);
             }
-            // If user chose Cancel or elevation failed, continue in limited mode (UI loads, admin-required features may fail).
+        }
+        catch (Exception ex)
+        {
+            StartupLogger.LogException("Post-show init", ex);
+            await Dispatcher.InvokeAsync(() =>
+                MessageBox.Show(
+                    $"Startup initialization failed: {ex.Message}\nSee {StartupLogger.LogPath}",
+                    "Startup error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error));
+        }
+        finally
+        {
+            StartupLogger.LogMilestone("Post-show async init finished");
+        }
+    }
+
+    private async Task<bool> MaybePromptForElevationAsync()
+    {
+        if (IsAdministrator() || Interlocked.Exchange(ref _adminPromptShown, 1) != 0)
+            return false;
+
+        const string title = "Administrator Required";
+        const string message = "Administrator rights are required for hardening and ASR features. Click OK to relaunch with elevated permissions, or Cancel to continue in limited mode.";
+
+        var result = await Dispatcher.InvokeAsync(() =>
+            MessageBox.Show(message, title, MessageBoxButton.OKCancel, MessageBoxImage.Exclamation));
+
+        if (result != MessageBoxResult.OK) return false;
+
+        var relaunched = await Task.Run(() => TryLaunchElevated(_startupArgs));
+        if (relaunched)
+        {
+            StartupLogger.LogMilestone("Elevation requested; shutting down current instance");
+            Shutdown();
+            return true;
         }
 
-        // Close splash screen before showing main UI
-        _splashWindow?.Close();
-        _splashWindow = null;
+        await Dispatcher.InvokeAsync(() =>
+        {
+            MessageBox.Show(
+                "Failed to relaunch elevated. Continuing without admin rights.",
+                title,
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        });
 
-        InitTrayIcon();
-        base.OnStartup(e);
+        return false;
+    }
+
+    private bool TryLaunchElevated(IEnumerable<string> args)
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(exePath)) return false;
+
+            var psi = new ProcessStartInfo(exePath)
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                WorkingDirectory = AppContext.BaseDirectory,
+                Arguments = string.Join(" ", args.Select(a => $"\"{a}\""))
+            };
+
+            var started = Process.Start(psi);
+            return started != null;
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            StartupLogger.LogMilestone("Elevation cancelled by user");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            StartupLogger.LogException("Elevation", ex);
+            return false;
+        }
     }
 
     private static bool IsAdministrator()
@@ -80,43 +195,39 @@ public partial class App : System.Windows.Application
         return principal.IsInRole(WindowsBuiltInRole.Administrator);
     }
 
-    private void WarnIfAsrLikelyBlocking()
+    private string? TryGetAsrWarningMessage()
     {
         try
         {
             var json = GetMpPreferenceJson();
-            if (string.IsNullOrWhiteSpace(json)) return;
+            if (string.IsNullOrWhiteSpace(json)) return null;
 
             using var doc = JsonDocument.Parse(json);
             if (!doc.RootElement.TryGetProperty("AttackSurfaceReductionRules_Ids", out var idsElem) ||
                 !doc.RootElement.TryGetProperty("AttackSurfaceReductionRules_Actions", out var actionsElem) ||
                 idsElem.ValueKind != JsonValueKind.Array ||
                 actionsElem.ValueKind != JsonValueKind.Array)
-                return;
+                return null;
 
-            var pairs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var len = Math.Min(idsElem.GetArrayLength(), actionsElem.GetArrayLength());
             for (var i = 0; i < len; i++)
             {
                 var id = idsElem[i].GetString();
                 var action = actionsElem[i].GetInt32();
-                if (!string.IsNullOrWhiteSpace(id))
-                    pairs[id] = action;
-            }
-
-            if (pairs.TryGetValue(AsrExecutableBlockGuid, out var val) && val == 1)
-            {
-                MessageBox.Show(
-                    "Windows Defender ASR rule \"Block executable content from email and webmail clients\" is set to Block. Unsigned builds of TGWST may be prevented from running.\n\nRecommendation: run a signed build from Program Files or set the rule to Audit while testing.",
-                    "ASR may block TGWST",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                if (!string.IsNullOrWhiteSpace(id) &&
+                    string.Equals(id, AsrExecutableBlockGuid, StringComparison.OrdinalIgnoreCase) &&
+                    action == 1)
+                {
+                    return "Windows Defender ASR rule \"Block executable content from email and webmail clients\" is set to Block. Unsigned builds of TGWST may be prevented from running.\n\nRecommendation: run a signed build from Program Files or set the rule to Audit while testing.";
+                }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // best effort only
+            StartupLogger.LogException("ASR detection", ex);
         }
+
+        return null;
     }
 
     private static string GetMpPreferenceJson()
@@ -173,14 +284,45 @@ public partial class App : System.Windows.Application
             menu.Items.Add("Exit", null, (_, _) => Current.Shutdown());
             _trayIcon.ContextMenuStrip = menu;
         }
+        catch (Exception ex)
+        {
+            StartupLogger.LogException("Tray init", ex);
+        }
+    }
+
+    private void CloseSplash()
+    {
+        if (_splashWindow != null)
+        {
+            try { _splashWindow.Close(); }
+            catch { /* ignore */ }
+            _splashWindow = null;
+        }
+    }
+
+    private void TryShowFatal(string title, Exception ex)
+    {
+        try
+        {
+            var message = $"{title}: {ex.Message}\nSee {StartupLogger.LogPath} for details.";
+            if (Dispatcher.CheckAccess())
+            {
+                MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            else
+            {
+                Dispatcher.Invoke(() => MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error));
+            }
+        }
         catch
         {
-            // best-effort tray icon
+            // do not throw from error handler
         }
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        CloseSplash();
         if (_trayIcon != null)
         {
             _trayIcon.Visible = false;
