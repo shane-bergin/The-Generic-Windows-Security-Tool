@@ -9,15 +9,15 @@
 
     <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
         <TextBlock Text="Scan type:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-        <ComboBox x:Name="ScanTypeCombo" Width="180">
+        <ComboBox Width="180" SelectedIndex="{Binding ScanTypeIndex}" ToolTip="Quick: User docs/temp YARA/IOC. Deep: All drives Clam/YARA">
             <ComboBoxItem Content="Quick (YARA)"/>
             <ComboBoxItem Content="Deep (YARA)"/>
         </ComboBox>
         <CheckBox x:Name="ClamCheck" Content="Use ClamAV deep scan" Margin="8,0,0,0" IsChecked="{Binding UseClamAv}"/>
-        <Button Content="Scan" Click="Scan_Click" Margin="8,0,0,0"/>
-        <Button Content="Update Signatures" Click="UpdateSignatures_Click" Margin="8,0,0,0"/>
-        <ProgressBar x:Name="ProgressRing"
-                     Width="150"
+        <Button Content="Scan" Click="Scan_Click" Margin="8,0,0,0" IsEnabled="{Binding !IsBusy}" ToolTip="Run selected scan"/>
+        <Button Content="Update Signatures" Click="UpdateSignatures_Click" Margin="8,0,0,0" IsEnabled="{Binding !IsBusy}" ToolTip="Refresh ClamAV/YARA signatures"/>
+        <Button Content="Cancel" Click="Cancel_Click" Margin="8,0,0,0" IsEnabled="{Binding IsBusy}" Visibility="{Binding ProgressVisible}" ToolTip="Cancel running scan"/>
+        <ProgressBar Width="150"
                      Height="16"
                      Margin="8,0,0,0"
                      Minimum="0"
@@ -42,11 +42,10 @@
 
         <GroupBox Header="Scan log" Grid.Row="2" Margin="0,8,0,0">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <TextBox Text="{Binding LogText}"
-                         IsReadOnly="True"
-                         TextWrapping="Wrap"
+                <ListBox ItemsSource="{Binding LogLines}"
                          FontFamily="Consolas"
-                         VerticalScrollBarVisibility="Auto"/>
+                         VirtualizingStackPanel.VirtualizationMode="Recycling"
+                         SelectionMode="None"/>
             </ScrollViewer>
         </GroupBox>
 
@@ -59,7 +58,7 @@
         <StackPanel Orientation="Horizontal">
             <TextBlock Text="{Binding ClamStatus}" Margin="0,0,12,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding Status}" VerticalAlignment="Center"/>
-            <Button Content="Reload Feeds" Margin="8,0,0,0" Click="ReloadFeeds_Click"/>
+            <Button Content="Reload Feeds" Margin="8,0,0,0" Click="ReloadFeeds_Click" ToolTip="Reload YARA/IOC feeds"/>
             <TextBlock Text="{Binding ThreatFeeds.YaraRuleCount, StringFormat='YARA rules: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding ThreatFeeds.IocBundleCount, StringFormat='IOC bundles: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding ThreatFeeds.TotalFamilies, StringFormat='Families: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
