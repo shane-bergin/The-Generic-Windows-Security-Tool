@@ -84,6 +84,7 @@ function Ensure-ClamAvPayload {
         $clamDir = $clamscan.DirectoryName
         Ensure-CleanDir -path $clamBin
         Get-ChildItem $clamDir -Filter "*.exe" | ForEach-Object { Copy-Item $_.FullName -Destination $clamBin }
+        Get-ChildItem $clamDir -Filter "*.dll" | ForEach-Object { Copy-Item $_.FullName -Destination $clamBin }
     }
 
     if (-not (Test-Path $clamDb)) { New-Item -ItemType Directory -Path $clamDb | Out-Null }
@@ -309,9 +310,9 @@ try {
     }
 
     if (Test-Path $clamHarvest) {
-        $harvestedDlls += Select-String -Path $clamHarvest -Pattern 'Name="([^"]+\.dll)"' |
+        $harvestedDlls += Select-String -Path $clamHarvest -Pattern 'Source=".*\\([^\\]+\.dll)"' |
             ForEach-Object {
-                $m = [regex]::Match($_.Line, 'Name="([^"]+\.dll)"')
+                $m = [regex]::Match($_.Line, 'Source=".*\\([^\\]+\.dll)"')
                 if ($m.Success) { $m.Groups[1].Value }
             }
     }
@@ -371,6 +372,12 @@ try {
     }
 
     Write-Host "Done. MSI output: $msiOutput"
+
+    $distDir = Join-Path $PSScriptRoot "..\INSTALL_FROM_HERE"
+    if (Test-Path $msiOutput -PathType Leaf) {
+        Copy-Item $msiOutput $distDir -Force
+        Write-Host "Copied to $distDir"
+    }
 } catch {
     Write-Error $_
     exit 1

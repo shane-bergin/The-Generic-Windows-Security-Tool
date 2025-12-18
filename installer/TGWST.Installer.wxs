@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="The Generic Windows Security Tool" Language="1033" Version="$(var.ProductVersion)" Manufacturer="TGWST" UpgradeCode="BE64B133-8D56-45A3-9C7E-5F89A0A3CC01">
+    <Product Id="*" Name="TGWST - Windows Security Tool" Language="1033" Version="$(var.ProductVersion)" Manufacturer="Shane Bergin" UpgradeCode="BE64B133-8D56-45A3-9C7E-5F89A0A3CC01">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" />
 
     <MajorUpgrade DowngradeErrorMessage="A later version of TGWST is already installed."
@@ -12,6 +12,7 @@
     <Property Id="ARPHELPLINK" Value="https://github.com/shane-bergin/The-Generic-Windows-Security-Tool" />
     <Property Id="ARPNOREPAIR" Value="1" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPCOMMENTS" Value="TGWST - Windows 11 Security Hardening, Compliance, Scan Tool" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
@@ -36,6 +37,7 @@
       <ComponentGroupRef Id="ClamAvFiles" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="AppIconFile" />
       <ComponentRef Id="BaselineFile" />
       <ComponentRef Id="WdacDataFolder" />
       <ComponentRef Id="RemoveAppDataDir" />
@@ -43,10 +45,34 @@
     </Feature>
 
     <UIRef Id="WixUI_InstallDir" />
+
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch The Generic Windows Security Tool" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+
+    <CustomAction Id="LaunchApplication"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="[INSTALLFOLDER]$(var.AppExeName)"
+                  Execute="immediate"
+                  Impersonate="yes"
+                  Return="asyncNoWait" />
+
+    <InstallExecuteSequence>
+      <Custom Action="LaunchApplication" After="InstallFinalize">
+        WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed
+      </Custom>
+    </InstallExecuteSequence>
   </Product>
 
   <Fragment>
     <Icon Id="AppIcon" SourceFile="$(var.IconPath)" />
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="AppIconFile" Guid="*" Win64="yes">
+        <File Id="AppIconFile" Source="$(var.IconPath)" />
+      </Component>
+    </DirectoryRef>
   </Fragment>
 
   <Fragment>

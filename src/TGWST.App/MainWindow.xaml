@@ -24,9 +24,6 @@
 <TabItem Header="Network">
 <tabs:NetworkTab />
 </TabItem>
-<TabItem Header="WDAC">
-<tabs:WdacTab />
-</TabItem>
 <TabItem Header="BitLocker">
 <tabs:BitLockerTab />
 </TabItem>

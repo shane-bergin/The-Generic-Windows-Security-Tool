@@ -45,7 +45,7 @@
                 <ListBox ItemsSource="{Binding LogLines}"
                          FontFamily="Consolas"
                          VirtualizingStackPanel.VirtualizationMode="Recycling"
-                         SelectionMode="None"/>
+                         IsHitTestVisible="False"/>
             </ScrollViewer>
         </GroupBox>
 

@@ -22,3 +22,7 @@ installer/_clamav_stage/
 *.log
 *.tmp
 *.cache
+
+# Vendor tools (download in build script)
+installer/wix-bin/
+yara*/
