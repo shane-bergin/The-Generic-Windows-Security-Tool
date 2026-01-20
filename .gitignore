@@ -9,7 +9,6 @@ installer/HarvestedFiles.wxs
 installer/*.exe
 installer/_downloads/
 installer/_msi_stage/
-installer/_clamav_stage/
 *.msi
 *.wixpdb
 

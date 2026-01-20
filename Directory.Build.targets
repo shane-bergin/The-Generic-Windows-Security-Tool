@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <!-- Preferred LLamaSharp CPU variant to include in publish; others are removed to avoid duplicate native assets -->
+    <LlamaPreferredCpuVariant Condition="'$(LlamaPreferredCpuVariant)' == ''">avx2</LlamaPreferredCpuVariant>
+  </PropertyGroup>
+
+  <Target Name="FilterLlamaSharpNativeAssets" BeforeTargets="ResolveCopyToPublishAssets">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition=" '%(ResolvedFileToPublish.PackageId)' == 'LLamaSharp.Backend.Cpu'
+          and '%(ResolvedFileToPublish.RelativePath)' != ''
+          and $([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').ToLowerInvariant().Contains('runtimes/win-x64/native'))
+          and -not $([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').ToLowerInvariant().Contains('$(LlamaPreferredCpuVariant)'))" />
+    </ItemGroup>
+  </Target>
+</Project>

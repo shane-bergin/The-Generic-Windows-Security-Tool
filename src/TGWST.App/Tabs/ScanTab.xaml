@@ -9,13 +9,13 @@
 
     <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
         <TextBlock Text="Scan type:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-        <ComboBox Width="180" SelectedIndex="{Binding ScanTypeIndex}" ToolTip="Quick: User docs/temp YARA/IOC. Deep: All drives Clam/YARA">
-            <ComboBoxItem Content="Quick (YARA)"/>
-            <ComboBoxItem Content="Deep (YARA)"/>
+        <ComboBox Width="180" SelectedIndex="{Binding ScanTypeIndex}" ToolTip="Quick: User folders. Standard: User profile. Full: All drives. YARA/IOC/LLM scripts">
+            <ComboBoxItem Content="Quick"/>
+            <ComboBoxItem Content="Standard"/>
+            <ComboBoxItem Content="Full"/>
         </ComboBox>
-        <CheckBox x:Name="ClamCheck" Content="Use ClamAV deep scan" Margin="8,0,0,0" IsChecked="{Binding UseClamAv}"/>
+        <CheckBox Content="Use LLM script analysis" Margin="8,0,0,0" IsChecked="{Binding UseLLM}"/>
         <Button Content="Scan" Click="Scan_Click" Margin="8,0,0,0" IsEnabled="{Binding !IsBusy}" ToolTip="Run selected scan"/>
-        <Button Content="Update Signatures" Click="UpdateSignatures_Click" Margin="8,0,0,0" IsEnabled="{Binding !IsBusy}" ToolTip="Refresh ClamAV/YARA signatures"/>
         <Button Content="Cancel" Click="Cancel_Click" Margin="8,0,0,0" IsEnabled="{Binding IsBusy}" Visibility="{Binding ProgressVisible}" ToolTip="Cancel running scan"/>
         <ProgressBar Width="150"
                      Height="16"
@@ -37,6 +37,15 @@
             <DataGridTextColumn Header="Engine" Binding="{Binding Engine}" Width="*"/>
             <DataGridTextColumn Header="Family" Binding="{Binding ThreatFamily}" Width="*"/>
             <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="3*"/>
+            <DataGridTemplateColumn Header="LLM Analysis" Width="3*">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="100">
+                            <TextBlock Text="{Binding LLMAnalysis}" TextWrapping="Wrap"/>
+                        </ScrollViewer>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
         </DataGrid.Columns>
     </DataGrid>
 
@@ -56,27 +65,14 @@
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal">
-            <TextBlock Text="{Binding ClamStatus}" Margin="0,0,12,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding Status}" VerticalAlignment="Center"/>
             <Button Content="Reload Feeds" Margin="8,0,0,0" Click="ReloadFeeds_Click" ToolTip="Reload YARA/IOC feeds"/>
             <TextBlock Text="{Binding ThreatFeeds.YaraRuleCount, StringFormat='YARA rules: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding ThreatFeeds.IocBundleCount, StringFormat='IOC bundles: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding ThreatFeeds.TotalFamilies, StringFormat='Families: {0}'}" Margin="12,0,0,0" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding ThreatFeeds.LastReloadDisplay}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            <Button Content="LLM Settings" Margin="12,0,0,0" Click="LLMSettings_Click" ToolTip="Configure API provider and key for LLM analysis"/>
         </StackPanel>
-
-        <GroupBox Header="IOC Feeds" Grid.Row="1" Margin="0,8,0,0">
-            <DataGrid ItemsSource="{Binding IocBundles}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Family" Binding="{Binding Family}" Width="*"/>
-                    <DataGridTextColumn Header="Mutexes" Binding="{Binding MutexCount}" Width="Auto"/>
-                    <DataGridTextColumn Header="Domains" Binding="{Binding DomainCount}" Width="Auto"/>
-                    <DataGridTextColumn Header="Filenames" Binding="{Binding FilenameCount}" Width="Auto"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </GroupBox>
     </Grid>
 </Grid>
 </UserControl>

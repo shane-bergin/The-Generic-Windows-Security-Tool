@@ -25,16 +25,15 @@
       <Directory Id="DesktopFolder" />
       <Directory Id="CommonAppDataFolder">
         <Directory Id="TGWSTAppData" Name="TGWST">
-          <Directory Id="CLAMAVDIR" Name="ClamAV" />
           <Directory Id="BaselinesDir" Name="Baselines" />
           <Directory Id="WdacDataDir" Name="WDAC" />
+          <Directory Id="ModelsDir" Name="Models" />
         </Directory>
       </Directory>
     </Directory>
 
     <Feature Id="MainFeature" Title="The Generic Windows Security Tool" Level="1">
       <ComponentGroupRef Id="HarvestedFiles" />
-      <ComponentGroupRef Id="ClamAvFiles" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="AppIconFile" />
@@ -107,7 +106,7 @@
   <Fragment>
     <DirectoryRef Id="BaselinesDir">
       <Component Id="BaselineFile" Guid="*">
-        <File Id="TGWST_Balanced.csv" Source="assets\Baselines\TGWST_Balanced.csv" />
+        <File Id="TGWST_Balanced.csv" Source="..\assets\Baselines\TGWST_Balanced.csv" />
       </Component>
     </DirectoryRef>
   </Fragment>
