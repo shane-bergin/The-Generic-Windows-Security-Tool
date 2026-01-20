@@ -24,14 +24,14 @@
 <TabItem Header="Network">
 <tabs:NetworkTab />
 </TabItem>
+<TabItem Header="Firewall">
+<tabs:FirewallTab />
+</TabItem>
 <TabItem Header="BitLocker">
 <tabs:BitLockerTab />
 </TabItem>
 <TabItem Header="Compliance">
 <tabs:ComplianceTab />
-</TabItem>
-<TabItem Header="Drift">
-<tabs:DriftTab />
 </TabItem>
 <TabItem Header="Event Logging">
 <tabs:EventLogTab />
