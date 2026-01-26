@@ -6,26 +6,12 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="dnYara" Version="2.1.0" />
-    <PackageReference Include="dnYara.NativePack" Version="2.1.0.3" GeneratePathProperty="true" ExcludeAssets="compile;runtime" />
-    <PackageReference Include="LLamaSharp" Version="0.25.0" />
-    <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.25.0" GeneratePathProperty="true" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.DirectML" Version="0.11.4" />
     <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.4.5" />
+    <PackageReference Include="System.Management" Version="10.0.2" />
     <PackageReference Include="YamlDotNet" Version="15.1.0" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="$(PkgdnYara_NativePack)\lib\netstandard1.1\libyara.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </None>
-    <Content Include="$(PkgLLamaSharp_Backend_Cpu)\runtimes\win-x64\native\avx2\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\Rules.yar" LogicalName="TGWST.Core.Rules.yar" />
     <EmbeddedResource Include="..\..\SigmaRules\process_creation.yml" LogicalName="TGWST.Core.SigmaRules.process_creation.yml" />
   </ItemGroup>
 
