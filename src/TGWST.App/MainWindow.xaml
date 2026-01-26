@@ -18,9 +18,6 @@
 <TabItem Header="Uninstall">
 <tabs:UninstallTab />
 </TabItem>
-<TabItem Header="Scan">
-<tabs:ScanTab />
-</TabItem>
 <TabItem Header="Network">
 <tabs:NetworkTab />
 </TabItem>

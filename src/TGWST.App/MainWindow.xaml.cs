@@ -1,22 +1,14 @@
-using System;
 using System.Windows;
+using TGWST.App.ViewModels;
 
-namespace TGWST.App;
-
-public partial class MainWindow : Window
+namespace TGWST.App
 {
-    public MainWindow()
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
-        VersionText.Text = BuildInfo.Current.DisplayVersion;
-    }
-
-    protected override void OnStateChanged(EventArgs e)
-    {
-        base.OnStateChanged(e);
-        if (WindowState == WindowState.Minimized)
+        public MainWindow(MainViewModel viewModel)
         {
-            Hide();
+            InitializeComponent();
+            DataContext = viewModel;
         }
     }
 }

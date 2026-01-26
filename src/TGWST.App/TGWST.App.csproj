@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
+    <UseWindowsForms>false</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
@@ -44,13 +44,10 @@
     <Exec Command="&quot;$(SignToolPath)&quot; sign /fd sha256 /f &quot;$(SignPfxPath)&quot; /p &quot;$(SignPfxPassword)&quot; /tr &quot;$(SignTimestampUrl)&quot; /td sha256 &quot;$(PublishDir)TGWST.App.exe&quot;" />
   </Target>
 
-  <Target Name="StageRecommendedDriverBlockPolicy" AfterTargets="Publish"
-          Condition="Exists('$(windir)\\schemas\\CodeIntegrity\\ExamplePolicies\\RecommendedDriverBlock_Enforced.xml')">
+  <Target Name="StageRecommendedDriverBlockPolicy" AfterTargets="Publish" Condition="Exists('$(windir)\\schemas\\CodeIntegrity\\ExamplePolicies\\RecommendedDriverBlock_Enforced.xml')">
     <Message Text="Staging RecommendedDriverBlock_Enforced.xml into publish WDAC folder" Importance="high" />
     <MakeDir Directories="$(PublishDir)WDAC" />
-    <Copy SourceFiles="$(windir)\\schemas\\CodeIntegrity\\ExamplePolicies\\RecommendedDriverBlock_Enforced.xml"
-          DestinationFiles="$(PublishDir)WDAC\\WDAC_Enforced_With_Recommended_Driver_Block_Rules.xml"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(windir)\\schemas\\CodeIntegrity\\ExamplePolicies\\RecommendedDriverBlock_Enforced.xml" DestinationFiles="$(PublishDir)WDAC\\WDAC_Enforced_With_Recommended_Driver_Block_Rules.xml" SkipUnchangedFiles="true" />
   </Target>
 
   <ItemGroup Condition="Exists('..\TGWST.Core\Native\yara64.dll')">
@@ -58,5 +55,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
   </ItemGroup>
 </Project>
