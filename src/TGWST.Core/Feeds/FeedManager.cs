@@ -29,7 +29,9 @@ public static class FeedManager
     {
         FeedPaths.EnsureDirectoriesExist();
 
-        var yaraFiles = Directory.GetFiles(FeedPaths.Yara, "*.yar", SearchOption.TopDirectoryOnly);
+        var yaraFiles = Directory.GetFiles(FeedPaths.Yara, "*.yar", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.GetFiles(FeedPaths.YaraRules, "*.yar", SearchOption.TopDirectoryOnly))
+            .ToArray();
         var iocFiles = Directory.GetFiles(FeedPaths.Iocs, "*.json", SearchOption.TopDirectoryOnly);
 
         var iocBundles = new List<IocBundle>();

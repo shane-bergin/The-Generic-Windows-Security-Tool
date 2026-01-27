@@ -50,29 +50,50 @@ public partial class UninstallTab : System.Windows.Controls.UserControl, INotify
 
     private async void Uninstall_Click(object sender, RoutedEventArgs e)
     {
-        if (AppsGrid.SelectedItem is not InstalledApp app) return;
-
         try
         {
-            Status = $"Uninstalling {app.DisplayName}...";
-            await _engine.RunUninstallerAsync(app);
-            Status = "Scanning for leftovers...";
-
-            _leftovers = (await _engine.FindLeftoversAsync(app)).Select(l =>
-            {
-                l.Selected = false;
-                return l;
-            }).ToList();
-            OnPropertyChanged(nameof(Leftovers));
-            Status = $"Found {_leftovers.Count} potential leftovers.";
+            await Uninstall_ClickAsync(sender, e);
         }
         catch (Exception ex)
         {
-            Status = $"Uninstall failed: {ex.Message}";
+            MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
+    private async Task Uninstall_ClickAsync(object sender, RoutedEventArgs e)
+    {
+        if (AppsGrid.SelectedItem is not InstalledApp app) return;
+
+        Status = $"Uninstalling {app.DisplayName}...";
+        await _engine.RunUninstallerAsync(app);
+        Status = "Scanning for leftovers...";
+
+        var leftovers = (await _engine.FindLeftoversAsync(app)).Select(l =>
+        {
+            l.Selected = false;
+            return l;
+        }).ToList();
+        Dispatcher.Invoke(() =>
+        {
+            _leftovers = leftovers;
+            OnPropertyChanged(nameof(Leftovers));
+            Status = $"Found {_leftovers.Count} potential leftovers.";
+        });
+    }
+
     private async void RemoveLeftovers_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await RemoveLeftovers_ClickAsync(sender, e);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task RemoveLeftovers_ClickAsync(object sender, RoutedEventArgs e)
     {
         var selected = _leftovers.Where(l => l.Selected).ToList();
         if (selected.Count == 0)
@@ -94,24 +115,21 @@ public partial class UninstallTab : System.Windows.Controls.UserControl, INotify
             return;
         }
 
-        try
+        if (DryRunCheck.IsChecked == true)
         {
-            if (DryRunCheck.IsChecked == true)
+            Status = $"Dry run: would remove {selected.Count} items.";
+        }
+        else
+        {
+            Status = "Removing leftovers...";
+            await _engine.RemoveLeftoversAsync(selected, CancellationToken.None);
+            var newLeftovers = _leftovers.Except(selected).ToList();
+            Dispatcher.Invoke(() =>
             {
-                Status = $"Dry run: would remove {selected.Count} items.";
-            }
-            else
-            {
-                Status = "Removing leftovers...";
-                await _engine.RemoveLeftoversAsync(selected, CancellationToken.None);
-                _leftovers = _leftovers.Except(selected).ToList();
+                _leftovers = newLeftovers;
                 OnPropertyChanged(nameof(Leftovers));
                 Status = "Leftovers removal complete.";
-            }
-        }
-        catch (Exception ex)
-        {
-            Status = $"Failed to remove leftovers: {ex.Message}";
+            });
         }
     }
 

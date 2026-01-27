@@ -1,9 +1,11 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Security.Principal;
 using System.Threading;
 using System.Windows;
+using MessageBox = System.Windows.MessageBox;
 using TGWST.Core.EventLog;
 
 namespace TGWST.App.Tabs;
@@ -22,6 +24,18 @@ public partial class EventLogTab : System.Windows.Controls.UserControl
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
+        try
+        {
+            await Scan_ClickAsync(sender, e);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task Scan_ClickAsync(object sender, RoutedEventArgs e)
+    {
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         try
@@ -30,11 +44,14 @@ public partial class EventLogTab : System.Windows.Controls.UserControl
             _vm.Status = $"Scanning last {lookback.TotalHours:0}h...";
             var results = await _analyzer.ScanAsync(lookback, _cts.Token);
 
-            _vm.Findings.Clear();
-            foreach (var f in results)
-                _vm.Findings.Add(f);
-
-            _vm.Status = $"Found {_vm.Findings.Count} events.";
+            var findingList = results.ToList();
+            Dispatcher.Invoke(() =>
+            {
+                _vm.Findings.Clear();
+                foreach (var f in findingList)
+                    _vm.Findings.Add(f);
+                _vm.Status = $"Found {_vm.Findings.Count} events.";
+            });
         }
         catch (OperationCanceledException)
         {

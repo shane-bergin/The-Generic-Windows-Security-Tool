@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using MessageBox = System.Windows.MessageBox;
 using TGWST.App.Services;
 using TGWST.Core.Compliance;
 
@@ -23,29 +24,46 @@ public partial class DriftTab : System.Windows.Controls.UserControl
 
     private async void Start_Click(object sender, RoutedEventArgs e)
     {
-        if (!_vm.CanStart || string.IsNullOrWhiteSpace(_vm.SelectedBaselinePath)) return;
         try
         {
-            await StopMonitoringAsync();
-            _detector = new DriftDetector(_vm.SelectedBaselinePath, TimeSpan.FromSeconds(_vm.IntervalSeconds));
-            _detector.DriftDetected += (compliant, total) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    _vm.Status = $"Drift check: {compliant}/{total} compliant @ {DateTime.Now:T}";
-                });
-            };
-            _detector.Start();
-            _vm.IsMonitoring = true;
-            _vm.Status = "Drift detector running.";
+            await Start_ClickAsync(sender, e);
         }
         catch (Exception ex)
         {
-            _vm.Status = $"Start failed: {ex.Message}";
+            MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
+    private async Task Start_ClickAsync(object sender, RoutedEventArgs e)
+    {
+        if (!_vm.CanStart || string.IsNullOrWhiteSpace(_vm.SelectedBaselinePath)) return;
+        await StopMonitoringAsync();
+        _detector = new DriftDetector(_vm.SelectedBaselinePath, TimeSpan.FromSeconds(_vm.IntervalSeconds));
+        _detector.DriftDetected += (compliant, total) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _vm.Status = $"Drift check: {compliant}/{total} compliant @ {DateTime.Now:T}";
+            });
+        };
+        _detector.Start();
+        _vm.IsMonitoring = true;
+        _vm.Status = "Drift detector running.";
+    }
+
     private async void Stop_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await Stop_ClickAsync(sender, e);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task Stop_ClickAsync(object? sender, RoutedEventArgs e)
     {
         await StopMonitoringAsync();
     }

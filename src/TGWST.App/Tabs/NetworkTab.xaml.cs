@@ -53,7 +53,7 @@ private async Task RefreshPortsAsync()
     {
         _refreshInFlight = true;
         var ports = await _engine.GetListeningPortsAsync(_cts.Token);
-        PortsGrid.ItemsSource = ports;
+        Dispatcher.Invoke(() => PortsGrid.ItemsSource = ports);
     }
     catch (OperationCanceledException)
     {
@@ -70,59 +70,88 @@ private async Task RefreshPortsAsync()
 
 private async void Fortress_Click(object sender, RoutedEventArgs e)
 {
-    if (!EnsureAdminForAction()) return;
     try
     {
-        StatusText.Text = "Enabling fortress mode (block inbound, allow outbound)...";
-        await _engine.EnableFortressModeAsync(_cts.Token);
-        StatusText.Text = "Fortress mode enabled.";
-        await RefreshPortsAsync();
+        await Fortress_ClickAsync(sender, e);
     }
     catch (Exception ex)
     {
-        StatusText.Text = $"ERROR: Failed to enable fortress mode: {ex.Message}";
+        MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
     }
+}
+
+private async Task Fortress_ClickAsync(object sender, RoutedEventArgs e)
+{
+    if (!EnsureAdminForAction()) return;
+    StatusText.Text = "Enabling fortress mode (block inbound, allow outbound)...";
+    await _engine.EnableFortressModeAsync(_cts.Token);
+    Dispatcher.Invoke(() => StatusText.Text = "Fortress mode enabled.");
+    await RefreshPortsAsync();
 }
 
 private async void ResetFw_Click(object sender, RoutedEventArgs e)
 {
-    if (!EnsureAdminForAction()) return;
     try
     {
-        StatusText.Text = "Resetting Windows Firewall to defaults...";
-        await _engine.ResetFirewallToDefaultAsync(_cts.Token);
-        StatusText.Text = "Firewall reset to defaults.";
-        await RefreshPortsAsync();
+        await ResetFw_ClickAsync(sender, e);
     }
     catch (Exception ex)
     {
-        StatusText.Text = $"ERROR: Failed to reset firewall: {ex.Message}";
+        MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
     }
+}
+
+private async Task ResetFw_ClickAsync(object sender, RoutedEventArgs e)
+{
+    if (!EnsureAdminForAction()) return;
+    StatusText.Text = "Resetting Windows Firewall to defaults...";
+    await _engine.ResetFirewallToDefaultAsync(_cts.Token);
+    Dispatcher.Invoke(() => StatusText.Text = "Firewall reset to defaults.");
+    await RefreshPortsAsync();
 }
 
 private async void Blocklists_Click(object sender, RoutedEventArgs e)
 {
-    if (!EnsureAdminForAction()) return;
-    StatusText.Text = "Applying threat blocklists...";
-    var progress = new Progress<string>(msg => StatusText.Text = msg);
-
     try
     {
-        await _engine.ApplyThreatBlocklistsAsync(progress, CancellationToken.None);
-        StatusText.Text += " Done.";
+        await Blocklists_ClickAsync(sender, e);
     }
     catch (Exception ex)
     {
-        StatusText.Text = "ERROR: Error applying blocklists: " + ex.Message;
+        MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 }
 
-private async void RemoveBlocklists_Click(object sender, RoutedEventArgs e)
+private async Task Blocklists_ClickAsync(object sender, RoutedEventArgs e)
 {
     if (!EnsureAdminForAction()) return;
-    StatusText.Text = "Removing TGWST threat block rules...";
-    await Task.Run(() => _engine.RemoveThreatBlocklistRules(), _cts.Token);
-        StatusText.Text = "Threat block rules removed.";
+    StatusText.Text = "Applying threat blocklists...";
+    var progress = new Progress<string>(msg => Dispatcher.Invoke(() => StatusText.Text = msg));
+
+    StatusText.Text = "Applying threat blocklists...";
+    await _engine.ApplyThreatBlocklistsAsync(progress, CancellationToken.None);
+    Dispatcher.Invoke(() => StatusText.Text += " Done.");
+}
+
+private void RemoveBlocklists_Click(object sender, RoutedEventArgs e)
+{
+    try
+    {
+        RemoveBlocklists_ClickAsync(sender, e);
+    }
+    catch (Exception ex)
+    {
+        MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+}
+
+private void RemoveBlocklists_ClickAsync(object sender, RoutedEventArgs e)
+{
+    if (!EnsureAdminForAction()) return;
+    StatusText.Text = "Removing threat blocklists...";
+    _engine.RemoveThreatBlocklistRules();
+    StatusText.Text = "Threat blocklists removed.";
+    _ = RefreshPortsAsync();
 }
 
 private async void Block_Click(object sender, RoutedEventArgs e)
@@ -132,7 +161,7 @@ private async void Block_Click(object sender, RoutedEventArgs e)
     try
     {
         await Task.Run(() => _engine.BlockPort(port.Port, port.Protocol), _cts.Token);
-        StatusText.Text = $"Blocked inbound {port.Protocol} {port.Port} (Process: {port.ProcessName}, PID: {port.Pid}).";
+        Dispatcher.Invoke(() => StatusText.Text = $"Blocked inbound {port.Protocol} {port.Port} (Process: {port.ProcessName}, PID: {port.Pid}).");
     }
     catch (Exception ex)
     {

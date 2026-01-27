@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,7 +11,9 @@ public sealed class DriftDetector : IAsyncDisposable
     private readonly string _baselinePath;
     private readonly TimeSpan _interval;
     private readonly CancellationTokenSource _cts = new();
-    private Task? _loop;
+    private readonly SemaphoreSlim _snapshotLock = new(1, 1);
+    private IReadOnlyList<BaselineComplianceEngine.Result>? _lastSnapshot;
+    private Task? _monitoringTask;
 
     public event Action<int, int>? DriftDetected; // compliant, total
 
@@ -20,25 +23,62 @@ public sealed class DriftDetector : IAsyncDisposable
         _interval = interval;
     }
 
+    private async Task MonitorLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await _snapshotLock.WaitAsync(ct);
+                try
+                {
+                    var currentSnapshot = _engine.Evaluate(_baselinePath);
+
+                    if (_lastSnapshot != null)
+                    {
+                        var compliant = currentSnapshot.Count(r => r.Compliant);
+                        var total = currentSnapshot.Count;
+
+                        if (compliant != _lastSnapshot.Count(r => r.Compliant))
+                        {
+                            DriftDetected?.Invoke(compliant, total);
+                        }
+                    }
+
+                    _lastSnapshot = currentSnapshot;
+                }
+                finally
+                {
+                    _snapshotLock.Release();
+                }
+
+                await Task.Delay(_interval, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                // Log error and continue
+                await Task.Delay(TimeSpan.FromMinutes(1), ct);
+            }
+        }
+    }
+
     public void Start()
     {
-        _loop = Task.Run(async () =>
-        {
-            while (!_cts.IsCancellationRequested)
-            {
-                var results = _engine.Evaluate(_baselinePath);
-                int compliant = 0;
-                foreach (var r in results) if (r.Compliant) compliant++;
-                DriftDetected?.Invoke(compliant, results.Count);
-                await Task.Delay(_interval, _cts.Token).ConfigureAwait(false);
-            }
-        }, _cts.Token);
+        _monitoringTask = MonitorLoopAsync(_cts.Token);
     }
 
     public async ValueTask DisposeAsync()
     {
         _cts.Cancel();
-        if (_loop != null) await _loop.ConfigureAwait(false);
+        if (_monitoringTask != null)
+        {
+            try { await _monitoringTask; } catch { }
+        }
         _cts.Dispose();
+        _snapshotLock.Dispose();
     }
 }
