@@ -74,6 +74,20 @@ public sealed class WdacEngine
         string? FriendlyName = null,
         string? BaseName = null);
 
+    public sealed record WdacAppliedPolicyInfo(
+        string PolicyId,
+        string? FriendlyName,
+        string SourcePolicyPath,
+        DateTimeOffset AppliedAtUtc,
+        bool EnforceUmci);
+
+    public sealed record WdacInstalledPolicyInfo(
+        string PolicyId,
+        string? FriendlyName,
+        bool IsSystemPolicy,
+        bool IsEnforced,
+        bool IsOnDisk);
+
     public sealed record WdacActionLogEntry(
         DateTimeOffset TimestampUtc,
         string Action,
@@ -758,6 +772,182 @@ public sealed class WdacEngine
             Source: "remove",
             ExitCode: result.ExitCode));
         return result;
+    }
+
+    public bool TryGetLatestAppliedPolicy(out WdacAppliedPolicyInfo? info)
+    {
+        var store = LoadAppliedPolicies();
+        if (store.Policies.Count == 0)
+        {
+            info = null;
+            return false;
+        }
+
+        var record = store.Policies.OrderByDescending(p => p.AppliedAtUtc).First();
+        info = new WdacAppliedPolicyInfo(
+            PolicyId: record.PolicyId,
+            FriendlyName: record.FriendlyName,
+            SourcePolicyPath: record.SourcePolicyPath,
+            AppliedAtUtc: record.AppliedAtUtc,
+            EnforceUmci: record.EnforceUmci);
+        return true;
+    }
+
+    public WdacOperationResult CreateSupplementalPolicyForPath(string basePolicyId, string targetPath, out string? xmlPath, out string? cipPath)
+    {
+        xmlPath = null;
+        cipPath = null;
+
+        if (string.IsNullOrWhiteSpace(basePolicyId))
+        {
+            return new WdacOperationResult(false, "Base policy ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(targetPath))
+        {
+            return new WdacOperationResult(false, "Target path is required.");
+        }
+
+        if (!File.Exists(targetPath))
+        {
+            return new WdacOperationResult(false, "Target file not found.", AffectedPath: targetPath);
+        }
+
+        var baseName = $"WDAC_DevAllow_{Path.GetFileNameWithoutExtension(targetPath)}_{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
+        xmlPath = Path.Combine(ProgramDataPath, baseName + ".xml");
+        cipPath = Path.Combine(ProgramDataPath, baseName + ".cip");
+
+        try
+        {
+            Directory.CreateDirectory(ProgramDataPath);
+
+            var createScript = $@"
+Import-Module ConfigCI -ErrorAction SilentlyContinue
+New-CIPolicy -FilePath '{EscapePwsh(xmlPath)}' -Level Hash -Fallback Hash -SupplementalPolicy -BasePolicyID '{EscapePwsh(basePolicyId)}' -ScanPath '{EscapePwsh(targetPath)}' -UserPEs
+";
+            var create = RunPowerShell(createScript);
+            if (create.ExitCode != 0 || !File.Exists(xmlPath))
+            {
+                var msg = "Failed to generate supplemental policy.";
+                return new WdacOperationResult(false, msg, AffectedPath: xmlPath, ExitCode: create.ExitCode, Stdout: create.Stdout, Stderr: create.Stderr);
+            }
+
+            var meta = TryReadMetadataFromXml(xmlPath);
+            if (meta == null || string.IsNullOrWhiteSpace(meta.PolicyId))
+            {
+                return new WdacOperationResult(false, "Generated policy is missing a PolicyID.", AffectedPath: xmlPath);
+            }
+
+            var compileScript = $"ConvertFrom-CIPolicy -XmlFilePath '{EscapePwsh(xmlPath)}' -BinaryFilePath '{EscapePwsh(cipPath)}'";
+            var compile = RunPowerShell(compileScript);
+            if (compile.ExitCode != 0 || !File.Exists(cipPath))
+            {
+                return new WdacOperationResult(false, "Failed to compile supplemental policy.", AffectedPath: xmlPath, ExitCode: compile.ExitCode, Stdout: compile.Stdout, Stderr: compile.Stderr, PolicyId: meta.PolicyId, FriendlyName: meta.FriendlyName, BaseName: baseName);
+            }
+
+            if (!IsAdministrator())
+            {
+                return new WdacOperationResult(false, "Supplemental policy compiled but requires Administrator rights to apply.", AffectedPath: cipPath, PolicyId: meta.PolicyId, FriendlyName: meta.FriendlyName, BaseName: baseName, RequiresElevation: true);
+            }
+
+            var update = RunCiTool($"--update-policy \"{cipPath}\" --json");
+            var op = TryParseCiToolOperation(update.Stdout);
+            if (update.ExitCode != 0 || (op.HasValue && op.Value != 0))
+            {
+                return new WdacOperationResult(false, "Failed to apply supplemental policy.", AffectedPath: cipPath, ExitCode: update.ExitCode, Stdout: update.Stdout, Stderr: update.Stderr, PolicyId: meta.PolicyId, FriendlyName: meta.FriendlyName, BaseName: baseName);
+            }
+
+            LogEvent($"Applied supplemental WDAC policy {meta.PolicyId} for {targetPath}", EventLogEntryType.Information);
+            return new WdacOperationResult(true, "Supplemental policy applied.", AffectedPath: cipPath, ExitCode: update.ExitCode, Stdout: update.Stdout, Stderr: update.Stderr, PolicyId: meta.PolicyId, FriendlyName: meta.FriendlyName, BaseName: baseName);
+        }
+        catch (Exception ex)
+        {
+            LogEvent($"CreateSupplementalPolicyForPath failed: {ex}", EventLogEntryType.Error);
+            return new WdacOperationResult(false, $"Supplemental policy failed: {ex.Message}", AffectedPath: xmlPath ?? cipPath, Details: ex.ToString());
+        }
+    }
+
+    public WdacOperationResult RemovePolicyById(string policyId, bool allowSystemPolicyRemoval = false)
+    {
+        if (string.IsNullOrWhiteSpace(policyId))
+        {
+            return new WdacOperationResult(false, "Policy ID is required.");
+        }
+
+        try
+        {
+            if (!IsAdministrator())
+            {
+                return new WdacOperationResult(false, "Removing a WDAC policy requires Administrator rights. Re-run TGWST as Administrator.", RequiresElevation: true, PolicyId: policyId);
+            }
+
+            var installed = ListPolicies();
+            var match = installed.FirstOrDefault(p => string.Equals(p.PolicyID, policyId, StringComparison.OrdinalIgnoreCase));
+            if (match != null && match.IsSystemPolicy && !allowSystemPolicyRemoval)
+            {
+                return new WdacOperationResult(
+                    false,
+                    $"The policy '{match.FriendlyName}' ({policyId}) is a system policy. Confirm removal to proceed.",
+                    PolicyId: policyId,
+                    FriendlyName: match.FriendlyName);
+            }
+
+            var remove = RunCiTool($"--remove-policy {policyId} --json");
+            var op = TryParseCiToolOperation(remove.Stdout);
+            if (remove.ExitCode != 0 || (op.HasValue && op.Value != 0))
+            {
+                return new WdacOperationResult(false, "Failed to remove WDAC policy.", ExitCode: remove.ExitCode, Stdout: remove.Stdout, Stderr: remove.Stderr, PolicyId: policyId, FriendlyName: match?.FriendlyName);
+            }
+
+            RunCiTool("--refresh --json");
+            LogEvent($"Removed WDAC policy {policyId}", match?.IsSystemPolicy == true ? EventLogEntryType.Warning : EventLogEntryType.Information);
+            return new WdacOperationResult(true, "WDAC policy removed.", PolicyId: policyId, FriendlyName: match?.FriendlyName, ExitCode: remove.ExitCode, Stdout: remove.Stdout, Stderr: remove.Stderr);
+        }
+        catch (Exception ex)
+        {
+            LogEvent($"RemovePolicyById failed: {ex}", EventLogEntryType.Error);
+            return new WdacOperationResult(false, $"Remove failed: {ex.Message}", Details: ex.ToString(), PolicyId: policyId);
+        }
+    }
+
+    public (IReadOnlyList<WdacInstalledPolicyInfo> Policies, string? Error) GetInstalledPolicies()
+    {
+        try
+        {
+            var result = RunCiTool("--list-policies --json");
+            if (result.ExitCode != 0)
+            {
+                return (Array.Empty<WdacInstalledPolicyInfo>(), $"CiTool failed (exit {result.ExitCode}).");
+            }
+
+            var parsed = JsonSerializer.Deserialize<CiToolListPoliciesResponse>(result.Stdout, JsonOptions);
+            if (parsed == null)
+            {
+                return (Array.Empty<WdacInstalledPolicyInfo>(), "Failed to parse CiTool output.");
+            }
+
+            if (parsed.OperationResult != 0)
+            {
+                return (Array.Empty<WdacInstalledPolicyInfo>(), $"CiTool returned operation result {parsed.OperationResult}.");
+            }
+
+            var policies = parsed.Policies ?? Array.Empty<CiToolPolicy>();
+            var list = policies
+                .Where(p => !string.IsNullOrWhiteSpace(p.PolicyID))
+                .Select(p => new WdacInstalledPolicyInfo(
+                    PolicyId: p.PolicyID ?? string.Empty,
+                    FriendlyName: p.FriendlyName,
+                    IsSystemPolicy: p.IsSystemPolicy,
+                    IsEnforced: p.IsEnforced,
+                    IsOnDisk: p.IsOnDisk))
+                .ToArray();
+
+            return (list, null);
+        }
+        catch (Exception ex)
+        {
+            return (Array.Empty<WdacInstalledPolicyInfo>(), ex.Message);
+        }
     }
 
     private GeneratedManifest LoadGeneratedManifest(string path)

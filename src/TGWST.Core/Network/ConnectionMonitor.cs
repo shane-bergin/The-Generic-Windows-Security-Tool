@@ -23,7 +23,7 @@ namespace TGWST.Core.Network
     {
         private readonly ConcurrentDictionary<string, string> _dnsCache = new(StringComparer.OrdinalIgnoreCase);
 
-        public async Task<IReadOnlyList<ConnectionInfo>> GetTcpConnectionsAsync()
+        public async Task<IReadOnlyList<ConnectionInfo>> GetConnectionsAsync()
         {
             var output = await Task.Run(() => RunNetstat());
             var parsed = Parse(output);
@@ -56,12 +56,18 @@ namespace TGWST.Core.Network
             return parsed;
         }
 
+        public async Task<IReadOnlyList<ConnectionInfo>> GetTcpConnectionsAsync()
+        {
+            var all = await GetConnectionsAsync();
+            return all.Where(c => string.Equals(c.Protocol, "TCP", StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
         private static string RunNetstat()
         {
             var psi = new ProcessStartInfo
             {
                 FileName = "netstat.exe",
-                Arguments = "-ano -p tcp",
+                Arguments = "-ano",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -89,14 +95,15 @@ namespace TGWST.Core.Network
             foreach (var line in lines)
             {
                 var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length < 5) continue;
+                if (parts.Length < 4) continue;
                 var proto = parts[0];
-                if (!proto.Equals("TCP", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!proto.Equals("TCP", StringComparison.OrdinalIgnoreCase) && !proto.Equals("UDP", StringComparison.OrdinalIgnoreCase))
+                    continue;
 
                 var local = parts[1];
                 var remote = parts[2];
-                var state = parts[3];
-                var pidStr = parts[4];
+                var state = proto.Equals("TCP", StringComparison.OrdinalIgnoreCase) && parts.Length >= 5 ? parts[3] : "UDP";
+                var pidStr = proto.Equals("TCP", StringComparison.OrdinalIgnoreCase) && parts.Length >= 5 ? parts[4] : parts[3];
                 if (!int.TryParse(pidStr, out var pid)) pid = 0;
 
                 var processName = ResolveProcessName(pid);

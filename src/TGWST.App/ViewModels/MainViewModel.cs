@@ -27,7 +27,7 @@ namespace TGWST.App.ViewModels
         public ICommand ScanCommand { get; }
         public ICommand DetonateCommand { get; }
 
-        private async void ExecuteScan()
+        private void ExecuteScan()
         {
             // Test logic: Scan a dummy buffer
             byte[] eicar = System.Text.Encoding.ASCII.GetBytes(@"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");

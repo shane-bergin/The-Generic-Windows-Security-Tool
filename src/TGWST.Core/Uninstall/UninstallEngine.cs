@@ -32,6 +32,29 @@ var apps = new List<InstalledApp>();
             if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(uninstallString))
                 continue;
 
+            // Skip system components and Windows updates
+            var systemComponent = appKey.GetValue("SystemComponent");
+            if (systemComponent is int sc && sc == 1)
+                continue;
+
+            // Parse install date (format: YYYYMMDD)
+            string? installDate = null;
+            if (appKey.GetValue("InstallDate") is string dateStr && dateStr.Length == 8)
+            {
+                if (DateTime.TryParseExact(dateStr, "yyyyMMdd", null,
+                    System.Globalization.DateTimeStyles.None, out var dt))
+                {
+                    installDate = dt.ToString("yyyy-MM-dd");
+                }
+            }
+
+            // Get estimated size (stored in KB)
+            long sizeBytes = 0;
+            if (appKey.GetValue("EstimatedSize") is int sizeKb && sizeKb > 0)
+            {
+                sizeBytes = (long)sizeKb * 1024;
+            }
+
             apps.Add(new InstalledApp
             {
                 DisplayName = displayName,
@@ -39,7 +62,11 @@ var apps = new List<InstalledApp>();
                 UninstallString = uninstallString,
                 ProductCode = appKey.GetValue("ProductCode") as string,
                 InstallLocation = appKey.GetValue("InstallLocation") as string,
-                InstallSource = appKey.GetValue("InstallSource") as string
+                InstallSource = appKey.GetValue("InstallSource") as string,
+                Version = appKey.GetValue("DisplayVersion") as string,
+                InstallDate = installDate,
+                EstimatedSizeBytes = sizeBytes,
+                RegistryKeyPath = $"{root.Name}\\{subkey}\\{name}"
             });
         }
     }

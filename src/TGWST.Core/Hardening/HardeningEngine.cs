@@ -103,7 +103,7 @@ profile.RebootRequired = true;
     return profile;
 }
 
-private static async Task RunPowerShellAsync(string script, IProgress<string>? log, CancellationToken ct, string? label = null)
+internal static async Task RunPowerShellAsync(string script, IProgress<string>? log, CancellationToken ct, string? label)
 {
     if (!string.IsNullOrWhiteSpace(label))
         Report(log, $"Executing: {label}");
@@ -140,6 +140,57 @@ private static async Task RunPowerShellAsync(string script, IProgress<string>? l
         throw new InvalidOperationException(sb.ToString());
     }
 }
+
+    public static Task RunPowerShellAsync(string script, IProgress<string>? log = null, CancellationToken ct = default)
+    {
+        return RunPowerShellAsync(script, log, ct, null);
+    }
+
+    public Task ExportSnapshotAsync(string path, IProgress<string>? log = null, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Snapshot path is required.", nameof(path));
+
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        var safePath = EscapePwsh(path);
+        var script = $@"
+$p = Get-MpPreference
+$snapshot = [ordered]@{{
+    DisableRealtimeMonitoring            = $p.DisableRealtimeMonitoring
+    EnableNetworkProtection              = $p.EnableNetworkProtection
+    EnableControlledFolderAccess         = $p.EnableControlledFolderAccess
+    AttackSurfaceReductionRules_Ids      = $p.AttackSurfaceReductionRules_Ids
+    AttackSurfaceReductionRules_Actions  = $p.AttackSurfaceReductionRules_Actions
+}}
+$snapshot | ConvertTo-Json -Depth 5 | Set-Content -Path '{safePath}' -Encoding UTF8
+";
+        Report(log, $"Exporting Defender/ASR snapshot to {path}");
+        return RunPowerShellAsync(script, log, ct, "Export ASR snapshot");
+    }
+
+    public Task ApplySnapshotAsync(string path, IProgress<string>? log = null, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Snapshot path is required.", nameof(path));
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Snapshot file not found.", path);
+
+        var safePath = EscapePwsh(path);
+        var script = $@"
+$snapshot = Get-Content -Path '{safePath}' -Raw | ConvertFrom-Json
+if ($null -ne $snapshot.DisableRealtimeMonitoring)    {{ Set-MpPreference -DisableRealtimeMonitoring $snapshot.DisableRealtimeMonitoring }}
+if ($null -ne $snapshot.EnableNetworkProtection)      {{ Set-MpPreference -EnableNetworkProtection $snapshot.EnableNetworkProtection }}
+if ($null -ne $snapshot.EnableControlledFolderAccess) {{ Set-MpPreference -EnableControlledFolderAccess $snapshot.EnableControlledFolderAccess }}
+if ($snapshot.AttackSurfaceReductionRules_Ids -and $snapshot.AttackSurfaceReductionRules_Actions) {{
+    Set-MpPreference -AttackSurfaceReductionRules_Ids $snapshot.AttackSurfaceReductionRules_Ids -AttackSurfaceReductionRules_Actions $snapshot.AttackSurfaceReductionRules_Actions
+}}
+";
+        Report(log, $"Applying Defender/ASR snapshot from {path}");
+        return RunPowerShellAsync(script, log, ct, "Apply ASR snapshot");
+    }
 
 private async Task EnsureBaselineSnapshotAsync(IProgress<string>? log, CancellationToken ct)
 {
@@ -254,6 +305,8 @@ private static string Truncate(string value, int max = 400)
     var trimmed = value.Trim();
     return trimmed.Length <= max ? trimmed : trimmed[..max] + "...";
 }
+
+private static string EscapePwsh(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 
 private static void EnsureAdmin()
 {
