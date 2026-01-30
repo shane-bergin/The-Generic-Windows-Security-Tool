@@ -265,7 +265,13 @@ namespace TGWST.App.Shell.Commands
                                 ? flow.RemoteHostname
                                 : $"{flow.RemoteAddress}:{flow.RemotePort}";
                             var country = string.IsNullOrEmpty(flow.RemoteCountry) ? "──" : flow.RemoteCountry;
-                            var actionSymbol = flow.Action == "Allow" ? "✓" : "✗";
+                            var actionSymbol = flow.Action switch
+                            {
+                                FlowAction.Allow => "✓",
+                                FlowAction.Block => "✗",
+                                FlowAction.Drop => "!",
+                                _ => "?"
+                            };
                             output.Append($"│ {Truncate(flow.ProcessName, 20),-20} {Truncate(remote, 28),-28} {country,5} {actionSymbol,5} {flow.TotalBytesDisplay,11} │\n");
                         }
                         output.Append("└───────────────────────────────────────────────────────────────────────┘\n");
