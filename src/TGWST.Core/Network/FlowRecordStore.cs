@@ -31,6 +31,10 @@ namespace TGWST.Core.Network
             walCmd.CommandText = "PRAGMA journal_mode=WAL;";
             walCmd.ExecuteNonQuery();
 
+            using var busyCmd = _connection.CreateCommand();
+            busyCmd.CommandText = "PRAGMA busy_timeout=2000;";
+            busyCmd.ExecuteNonQuery();
+
             InitializeSchema();
         }
 

@@ -256,7 +256,7 @@ namespace TGWST.Core.Network.Capture
         private static int NetworkToHostPort(uint port)
         {
             // Port is stored in network byte order (big-endian)
-            return IPAddress.NetworkToHostOrder((short)(port & 0xFFFF));
+            return (ushort)IPAddress.NetworkToHostOrder((short)(port & 0xFFFF));
         }
 
         private static string GetProcessName(int pid)

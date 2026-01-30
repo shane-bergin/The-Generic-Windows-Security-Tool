@@ -2,62 +2,100 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="TGWST - Task Output"
-        Background="#0D0F12"
+        Background="#0B0D11"
         Width="980"
         Height="640"
         MinWidth="820"
         MinHeight="540"
-        FontFamily="Cascadia Mono, Consolas"
+        FontFamily="Cascadia Code, Cascadia Mono, Consolas"
         WindowStartupLocation="CenterOwner"
         TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed"
         SnapsToDevicePixels="True">
     <Window.Resources>
-        <SolidColorBrush x:Key="AppBackground" Color="#0D0F12" />
-        <SolidColorBrush x:Key="Accent" Color="#5AA9FF" />
-        <SolidColorBrush x:Key="AcronymExpanded" Color="#B384FF" />
-        <SolidColorBrush x:Key="TextPrimary" Color="#E6EDF5" />
-        <SolidColorBrush x:Key="TextMuted" Color="#9AA7B5" />
-        <SolidColorBrush x:Key="TextHint" Color="#C9D4E3" />
-        <SolidColorBrush x:Key="Line" Color="#1B2633" />
+        <!-- Matching color scheme with ShellView -->
+        <SolidColorBrush x:Key="AppBackground" Color="#0A0E14" />
+        <SolidColorBrush x:Key="PanelBackground" Color="#0D1117" />
+        <SolidColorBrush x:Key="CardBackground" Color="#161B22" />
+        <SolidColorBrush x:Key="Accent" Color="#58A6FF" />
+        <SolidColorBrush x:Key="AccentBright" Color="#79C0FF" />
+        <SolidColorBrush x:Key="AcronymExpanded" Color="#D2A8FF" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#E6EDF3" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#C9D1D9" />
+        <SolidColorBrush x:Key="TextMuted" Color="#8B949E" />
+        <SolidColorBrush x:Key="TextDim" Color="#6E7681" />
+        <SolidColorBrush x:Key="Line" Color="#21262D" />
+        <SolidColorBrush x:Key="LineBright" Color="#30363D" />
+        <SolidColorBrush x:Key="Success" Color="#3FB950" />
+        <SolidColorBrush x:Key="Warning" Color="#D29922" />
+        <SolidColorBrush x:Key="Error" Color="#F85149" />
     </Window.Resources>
 
-    <Grid Margin="24" Background="{StaticResource AppBackground}">
+    <Grid Margin="20,16" Background="{StaticResource AppBackground}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Margin="0,0,0,16"
+                Padding="16,12"
+                Background="{StaticResource CardBackground}"
+                BorderBrush="{StaticResource LineBright}"
+                BorderThickness="1"
+                CornerRadius="6">
             <DockPanel>
-                <TextBlock Text="{Binding Title}" FontSize="16" Foreground="{StaticResource TextHint}" />
-                <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="{StaticResource TextMuted}" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="◆" FontSize="14" Foreground="{StaticResource Accent}" Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimary}" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <TextBlock Text="●" FontSize="11" Margin="0,0,6,0" Foreground="{StaticResource Success}" />
+                    <TextBlock Text="{Binding Status}"
+                               FontSize="13"
+                               FontWeight="Medium"
+                               Foreground="{StaticResource TextMuted}" />
+                </StackPanel>
             </DockPanel>
-            <Border Height="1" Background="{StaticResource Line}" Margin="0,12,0,0" />
-        </StackPanel>
+        </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Output}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Margin="0,0,0,10"
-                                   FontSize="14"
-                                   TextWrapping="Wrap"
-                                   xml:space="preserve"
-                                   Text="{Binding DisplayText}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsAcronymsExpanded}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource AcronymExpanded}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+        <!-- Content area -->
+        <Border Grid.Row="1"
+                Background="{StaticResource PanelBackground}"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="16,12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Output}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Margin="0,0,0,10"
+                                       FontSize="13"
+                                       LineHeight="20"
+                                       TextWrapping="Wrap"
+                                       xml:space="preserve"
+                                       Text="{Binding DisplayText}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAcronymsExpanded}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource AcronymExpanded}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
     </Grid>
 </Window>

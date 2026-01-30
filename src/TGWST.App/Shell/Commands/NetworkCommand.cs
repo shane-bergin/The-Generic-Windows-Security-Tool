@@ -61,25 +61,36 @@ namespace TGWST.App.Shell.Commands
             {
                 using var store = new FlowRecordStore();
                 var (count, bytes, oldest) = store.GetStats();
-                vm.AddOutput($"Network Flow Statistics\n");
-                vm.AddOutput($"Total flows recorded: {count:N0}\n");
-                vm.AddOutput($"Total bytes tracked: {FlowRecord.FormatBytes(bytes)}\n");
+
+                vm.AddOutput("╔═══════════════════════════════════════════════════════════════════════════╗\n");
+                vm.AddOutput("║ Network Flow Statistics                                                   ║\n");
+                vm.AddOutput("╠═══════════════════════════════════════════════════════════════════════════╣\n");
+                vm.AddOutput($"║ Total flows recorded:  {count:N0,-53} ║\n");
+                vm.AddOutput($"║ Total bytes tracked:   {FlowRecord.FormatBytes(bytes),-53} ║\n");
                 if (oldest.HasValue)
-                    vm.AddOutput($"Oldest record: {oldest.Value:g}\n");
+                    vm.AddOutput($"║ Oldest record:         {oldest.Value:g,-53} ║\n");
+                vm.AddOutput("╚═══════════════════════════════════════════════════════════════════════════╝\n\n");
 
                 var totals = store.GetHistoricalProcessTotals(DateTime.UtcNow.AddDays(-7)).Take(10).ToList();
                 if (totals.Count > 0)
                 {
-                    vm.AddOutput($"\nTop processes (last 7 days):\n");
+                    vm.AddOutput("┌─ Top Processes (Last 7 Days) ─────────────────────────────────────────┐\n");
+                    vm.AddOutput($"│ {"Process",-30} {"↓ In",13} {"↑ Out",13} │\n");
+                    vm.AddOutput("├───────────────────────────────────────────────────────────────────────┤\n");
                     foreach (var p in totals)
                     {
-                        vm.AddOutput($"  {p.ProcessName,-25} In: {p.BytesReceivedDisplay,10}  Out: {p.BytesSentDisplay,10}\n");
+                        vm.AddOutput($"│ {Truncate(p.ProcessName, 30),-30} {p.BytesReceivedDisplay,13} {p.BytesSentDisplay,13} │\n");
                     }
+                    vm.AddOutput("└───────────────────────────────────────────────────────────────────────┘\n");
                 }
             }
             catch (Exception ex)
             {
-                vm.AddOutput($"[error] Could not retrieve stats: {ex.Message}\n");
+                vm.AddOutput("╔═══════════════════════════════════════════════════════════════════════════╗\n");
+                vm.AddOutput("║ Network Flow Statistics                                                   ║\n");
+                vm.AddOutput("╠═══════════════════════════════════════════════════════════════════════════╣\n");
+                vm.AddOutput($"║ ✗ Error: {ex.Message,-65} ║\n");
+                vm.AddOutput("╚═══════════════════════════════════════════════════════════════════════════╝\n");
             }
         }
 
@@ -87,48 +98,57 @@ namespace TGWST.App.Shell.Commands
         {
             var session = _outputService.CreateSession("Network Baseline", vm.AcronymsExpanded);
             var progressVm = session.ViewModel;
-            progressVm.Append($"Started: {DateTime.Now:g}\n");
-            progressVm.Append("Collecting firewall profile status...\n");
+            progressVm.Append("╔═══════════════════════════════════════════════════════════════════════════╗\n");
+            progressVm.Append($"║ Network Baseline Scan                    Started: {DateTime.Now:T,-19} ║\n");
+            progressVm.Append("╚═══════════════════════════════════════════════════════════════════════════╝\n\n");
 
             var profileCount = 0;
             var vulnerableCount = 0;
             try
             {
+                progressVm.Append("┌─ Firewall Profile Status ─────────────────────────────────────────────┐\n");
                 var profiles = await _firewall.GetStatusAsync();
                 profileCount = profiles.Count;
                 vulnerableCount = profiles.Count(p => p.IsVulnerable);
                 foreach (var profile in profiles)
                 {
-                    var status = profile.IsVulnerable ? "VULNERABLE" : "OK";
-                    progressVm.Append($"- {profile.Profile}: {profile.State} / {profile.Policy} [{status}]\n");
+                    var statusSymbol = profile.IsVulnerable ? "✗" : "✓";
+                    var statusText = profile.IsVulnerable ? "VULNERABLE" : "OK";
+                    progressVm.Append($"│ {statusSymbol} {profile.Profile,-15} {profile.State,-10} / {profile.Policy,-15} [{statusText,10}] │\n");
                 }
+                progressVm.Append("└───────────────────────────────────────────────────────────────────────┘\n\n");
             }
             catch (Exception ex)
             {
-                progressVm.Append($"[error] Firewall status failed: {ex.Message}\n");
+                progressVm.Append($"│ ✗ Error: {ex.Message,-64} │\n");
+                progressVm.Append("└───────────────────────────────────────────────────────────────────────┘\n\n");
             }
 
             try
             {
-                progressVm.Append("\nEnumerating listening ports...\n");
                 var ports = await _engine.GetListeningPortsAsync();
-                var list = ports.Take(10).ToList();
-                progressVm.Append($"Listening ports detected: {ports.Count} (top {list.Count} shown)\n");
+                var list = ports.Take(15).ToList();
+                progressVm.Append($"┌─ Listening Ports ({ports.Count} total, showing top {list.Count}) ───────────────────────────┐\n");
+                progressVm.Append($"│ {"Proto",6} {"Address",20} {"Port",6} {"Process",25} {"PID",8} │\n");
+                progressVm.Append("├───────────────────────────────────────────────────────────────────────┤\n");
                 foreach (var port in list)
                 {
-                    progressVm.Append($"{port.Protocol} {port.Address}:{port.Port} {port.ProcessName} (PID {port.Pid})\n");
+                    progressVm.Append($"│ {port.Protocol,6} {Truncate(port.Address, 20),20} {port.Port,6} {Truncate(port.ProcessName, 25),25} {port.Pid,8} │\n");
                 }
 
                 if (ports.Count > list.Count)
-                    progressVm.Append($"... and {ports.Count - list.Count} more.\n");
+                    progressVm.Append($"│ ... and {ports.Count - list.Count} more ports                                                   │\n");
+                progressVm.Append("└───────────────────────────────────────────────────────────────────────┘\n");
             }
             catch (Exception ex)
             {
-                progressVm.Append($"[error] Port enumeration failed: {ex.Message}\n");
+                progressVm.Append($"┌─ Port Enumeration ────────────────────────────────────────────────────┐\n");
+                progressVm.Append($"│ ✗ Error: {ex.Message,-64} │\n");
+                progressVm.Append("└───────────────────────────────────────────────────────────────────────┘\n");
             }
 
             progressVm.Status = "Completed";
-            vm.AddOutput($"Network baseline completed: {profileCount} profiles checked, {vulnerableCount} vulnerable. Listening ports: collected.\n");
+            vm.AddOutput($"✓ Network baseline completed: {profileCount} profiles checked, {vulnerableCount} vulnerable.\n");
 
             _ = session.View.Dispatcher.InvokeAsync(async () =>
             {
@@ -149,11 +169,20 @@ namespace TGWST.App.Shell.Commands
             FlowCapturePipeline? pipeline = null;
             FlowAggregator? aggregator = null;
             EnrichmentService? enrichment = null;
+            FlowRecordStore? store = null;
 
             try
             {
                 enrichment = new EnrichmentService();
-                aggregator = new FlowAggregator(enrichment);
+                try
+                {
+                    store = new FlowRecordStore();
+                }
+                catch
+                {
+                    store = null;
+                }
+                aggregator = new FlowAggregator(enrichment, store);
                 pipeline = new FlowCapturePipeline();
 
                 pipeline.Start(TimeSpan.FromSeconds(2));
@@ -166,11 +195,30 @@ namespace TGWST.App.Shell.Commands
 
                 output.ClearOutput();
                 output.Append($"Network Monitor {modeText}\n");
-                output.Append("Press Ctrl+W to close pane.\n\n");
+                output.Append("Ctrl+P pauses updates (for scrolling). PgUp/PgDn scrolls. Ctrl+W closes pane.\n\n");
                 output.Status = "Live";
 
+                var paused = false;
                 while (!ct.IsCancellationRequested)
                 {
+                    if (vm.IsAttachedPanePaused)
+                    {
+                        if (!paused)
+                        {
+                            output.Status = "Paused";
+                            paused = true;
+                        }
+
+                        await Task.Delay(TimeSpan.FromMilliseconds(200), ct);
+                        continue;
+                    }
+
+                    if (paused)
+                    {
+                        output.Status = "Live";
+                        paused = false;
+                    }
+
                     var (sent, received, flowCount, processCount) = aggregator.GetTotalStats();
                     var processTotals = aggregator.GetProcessTotals()
                         .Values
@@ -180,35 +228,47 @@ namespace TGWST.App.Shell.Commands
                     var activeFlows = aggregator.GetActiveFlows();
 
                     output.ClearOutput();
-                    output.Append($"Network Monitor  Updated: {DateTime.Now:T}\n");
-                    output.Append($"Total In: {FlowRecord.FormatBytes(received)}  Out: {FlowRecord.FormatBytes(sent)}  ");
-                    output.Append($"Flows: {flowCount}  Processes: {processCount}\n");
-                    output.Append(modeText + "\n\n");
+
+                    // Header with stats
+                    output.Append("╔═══════════════════════════════════════════════════════════════════════════╗\n");
+                    output.Append($"║ Network Monitor                          Updated: {DateTime.Now:T,-19} ║\n");
+                    output.Append("╠═══════════════════════════════════════════════════════════════════════════╣\n");
+                    output.Append($"║ ↓ In: {FlowRecord.FormatBytes(received),12}  │  ↑ Out: {FlowRecord.FormatBytes(sent),12}  │  Flows: {flowCount,5}  │  Procs: {processCount,4} ║\n");
+                    output.Append("╠═══════════════════════════════════════════════════════════════════════════╣\n");
+                    output.Append($"║ {modeText,-73} ║\n");
+                    output.Append("╚═══════════════════════════════════════════════════════════════════════════╝\n\n");
 
                     if (processTotals.Count > 0)
                     {
-                        output.Append("Bandwidth by Process:\n");
-                        output.Append($"{"Process",-28} {"In",12} {"Out",12} {"Conn",6}\n");
-                        output.Append(new string('-', 60) + "\n");
+                        output.Append("┌─ Bandwidth by Process ────────────────────────────────────────────────┐\n");
+                        output.Append($"│ {"Process",-30} {"↓ In",13} {"↑ Out",13} {"Conn",6} │\n");
+                        output.Append("├───────────────────────────────────────────────────────────────────────┤\n");
+
+                        var maxBytes = processTotals.Max(p => p.TotalBytes);
                         foreach (var p in processTotals)
                         {
-                            output.Append($"{Truncate(p.ProcessName, 28),-28} {p.BytesReceivedDisplay,12} {p.BytesSentDisplay,12} {p.ConnectionCount,6}\n");
+                            var bar = CreateBandwidthBar(p.TotalBytes, maxBytes, 20);
+                            output.Append($"│ {Truncate(p.ProcessName, 30),-30} {p.BytesReceivedDisplay,13} {p.BytesSentDisplay,13} {p.ConnectionCount,6} │\n");
+                            output.Append($"│   {bar,-69} │\n");
                         }
-                        output.Append("\n");
+                        output.Append("└───────────────────────────────────────────────────────────────────────┘\n\n");
                     }
 
                     if (activeFlows.Count > 0)
                     {
-                        output.Append("Active Flows (top 20):\n");
-                        output.Append($"{"Process",-20} {"Remote",30} {"Bytes",12}\n");
-                        output.Append(new string('-', 64) + "\n");
+                        output.Append("┌─ Active Flows (top 20) ───────────────────────────────────────────────┐\n");
+                        output.Append($"│ {"Process",-20} {"Remote",28} {"Geo",5} {"Act",5} {"Bytes",11} │\n");
+                        output.Append("├───────────────────────────────────────────────────────────────────────┤\n");
                         foreach (var flow in activeFlows.Take(20))
                         {
                             var remote = !string.IsNullOrEmpty(flow.RemoteHostname)
                                 ? flow.RemoteHostname
                                 : $"{flow.RemoteAddress}:{flow.RemotePort}";
-                            output.Append($"{Truncate(flow.ProcessName, 20),-20} {Truncate(remote, 30),-30} {flow.TotalBytesDisplay,12}\n");
+                            var country = string.IsNullOrEmpty(flow.RemoteCountry) ? "──" : flow.RemoteCountry;
+                            var actionSymbol = flow.Action == "Allow" ? "✓" : "✗";
+                            output.Append($"│ {Truncate(flow.ProcessName, 20),-20} {Truncate(remote, 28),-28} {country,5} {actionSymbol,5} {flow.TotalBytesDisplay,11} │\n");
                         }
+                        output.Append("└───────────────────────────────────────────────────────────────────────┘\n");
                     }
 
                     await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
@@ -224,12 +284,13 @@ namespace TGWST.App.Shell.Commands
                 output.Append("Falling back to legacy monitor...\n");
                 output.Status = "Fallback";
                 // Fall back to legacy monitor
-                await RunLiveLegacyInternalAsync(output, ct);
+                await RunLiveLegacyInternalAsync(vm, output, ct);
             }
             finally
             {
                 aggregator?.Dispose();
                 pipeline?.Dispose();
+                store?.Dispose();
             }
         }
 
@@ -238,29 +299,53 @@ namespace TGWST.App.Shell.Commands
             var session = vm.OpenAttachedPane("Network Live Monitor (Legacy)");
             var output = session.ViewModel;
             var ct = session.Cancellation.Token;
-            await RunLiveLegacyInternalAsync(output, ct);
+            await RunLiveLegacyInternalAsync(vm, output, ct);
         }
 
-        private async Task RunLiveLegacyInternalAsync(ProgressViewModel output, System.Threading.CancellationToken ct)
+        private async Task RunLiveLegacyInternalAsync(ShellViewModel vm, ProgressViewModel output, System.Threading.CancellationToken ct)
         {
-            output.Append("Legacy live monitor started. Press Ctrl+W to close pane.\n");
+            output.Append("Legacy live monitor started. Ctrl+P pauses updates. PgUp/PgDn scrolls. Ctrl+W closes pane.\n");
             output.Append("This view shows active TCP/UDP connections with DNS resolution where possible.\n\n");
             output.Status = "Live";
 
             try
             {
                 var previous = new Dictionary<string, ConnectionInfo>(StringComparer.OrdinalIgnoreCase);
+                var paused = false;
 
                 while (!ct.IsCancellationRequested)
                 {
+                    if (vm.IsAttachedPanePaused)
+                    {
+                        if (!paused)
+                        {
+                            output.Status = "Paused";
+                            paused = true;
+                        }
+
+                        await Task.Delay(TimeSpan.FromMilliseconds(200), ct);
+                        continue;
+                    }
+
+                    if (paused)
+                    {
+                        output.Status = "Live";
+                        paused = false;
+                    }
+
                     var connections = await _monitor.GetConnectionsAsync();
                     var current = connections.ToDictionary(BuildKey, c => c, StringComparer.OrdinalIgnoreCase);
                     var newCount = current.Keys.Except(previous.Keys).Count();
                     var endedCount = previous.Keys.Except(current.Keys).Count();
 
                     output.ClearOutput();
-                    output.Append($"Network > Live Monitor (Legacy)   Updated: {DateTime.Now:T}\n");
-                    output.Append($"Connections: {connections.Count}   New: {newCount}   Ended: {endedCount}\n");
+
+                    // Header
+                    output.Append("╔═══════════════════════════════════════════════════════════════════════════╗\n");
+                    output.Append($"║ Network Live Monitor (Legacy)            Updated: {DateTime.Now:T,-19} ║\n");
+                    output.Append("╠═══════════════════════════════════════════════════════════════════════════╣\n");
+                    output.Append($"║ Total: {connections.Count,4}  │  ✓ New: {newCount,3}  │  ✗ Ended: {endedCount,3}                              ║\n");
+                    output.Append("╚═══════════════════════════════════════════════════════════════════════════╝\n\n");
 
                     var topProcesses = connections
                         .GroupBy(c => $"{c.ProcessName} (PID {c.Pid})")
@@ -271,13 +356,18 @@ namespace TGWST.App.Shell.Commands
 
                     if (topProcesses.Count > 0)
                     {
-                        output.Append("Top processes: ");
-                        output.Append(string.Join(", ", topProcesses.Select(p => $"{p.Name}:{p.Count}")) + "\n");
+                        output.Append("┌─ Top Processes ───────────────────────────────────────────────────────┐\n");
+                        foreach (var p in topProcesses)
+                        {
+                            var bar = new string('█', Math.Min(p.Count / 2, 30));
+                            output.Append($"│ {Truncate(p.Name, 35),-35} {p.Count,4} {bar,-33} │\n");
+                        }
+                        output.Append("└───────────────────────────────────────────────────────────────────────┘\n\n");
                     }
 
-                    output.Append("\n");
-                    output.Append("Process (PID)           Proto   Local -> Remote                     State\n");
-                    output.Append("--------------------------------------------------------------------------\n");
+                    output.Append("┌─ Active Connections (top 40) ─────────────────────────────────────────┐\n");
+                    output.Append($"│ {"Process",-22} {"Proto",6} {"Local",20} {"→",3} {"Remote",27} {"State",12} │\n");
+                    output.Append("├───────────────────────────────────────────────────────────────────────┤\n");
 
                     foreach (var conn in connections
                         .OrderBy(c => c.ProcessName, StringComparer.OrdinalIgnoreCase)
@@ -285,13 +375,14 @@ namespace TGWST.App.Shell.Commands
                         .Take(40))
                     {
                         var host = string.IsNullOrWhiteSpace(conn.RemoteHost) ? conn.RemoteAddress : conn.RemoteHost;
-                        output.Append($"{Truncate(conn.ProcessName, 22),-22} {conn.Protocol,-6} {Truncate(conn.LocalAddress, 21),-21} -> {Truncate(host, 28),-28} {conn.State}\n");
+                        output.Append($"│ {Truncate(conn.ProcessName, 22),-22} {conn.Protocol,6} {Truncate(conn.LocalAddress, 20),20} {"→",3} {Truncate(host, 27),27} {conn.State,12} │\n");
                     }
 
                     if (connections.Count > 40)
                     {
-                        output.Append($"... {connections.Count - 40} more\n");
+                        output.Append($"│ ... and {connections.Count - 40} more connections                                               │\n");
                     }
+                    output.Append("└───────────────────────────────────────────────────────────────────────┘\n");
 
                     previous = current;
                     await Task.Delay(TimeSpan.FromSeconds(2), ct);
@@ -317,6 +408,18 @@ namespace TGWST.App.Shell.Commands
         {
             if (string.IsNullOrEmpty(value) || value.Length <= max) return value;
             return value.Substring(0, Math.Max(1, max - 3)) + "...";
+        }
+
+        private static string CreateBandwidthBar(long bytes, long maxBytes, int width)
+        {
+            if (maxBytes == 0) return new string('─', width);
+
+            var percentage = (double)bytes / maxBytes;
+            var filled = (int)(percentage * width);
+            filled = Math.Min(filled, width);
+
+            var bar = new string('█', filled) + new string('░', width - filled);
+            return $"{bar} {percentage:P0}";
         }
     }
 }

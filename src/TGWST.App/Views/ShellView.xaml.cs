@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using TGWST.App.ViewModels;
 
@@ -6,6 +7,9 @@ namespace TGWST.App.Views
 {
     public partial class ShellView : Window
     {
+        private ScrollViewer? _outputScroll;
+        private ScrollViewer? _attachedScroll;
+
         public ShellView(ShellViewModel viewModel)
         {
             InitializeComponent();
@@ -30,8 +34,43 @@ namespace TGWST.App.Views
                 vm.ClearAttachedPaneClosePrompt();
             }
 
+            if (e.Key == Key.PageUp)
+            {
+                e.Handled = true;
+                ScrollActivePane(pageDown: false, vm);
+                return;
+            }
+
+            if (e.Key == Key.PageDown)
+            {
+                e.Handled = true;
+                ScrollActivePane(pageDown: true, vm);
+                return;
+            }
+
+            if (e.Key == Key.Home)
+            {
+                e.Handled = true;
+                ScrollToEdge(toEnd: false, vm);
+                return;
+            }
+
+            if (e.Key == Key.End)
+            {
+                e.Handled = true;
+                ScrollToEdge(toEnd: true, vm);
+                return;
+            }
+
             if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
+                if (e.Key == Key.P)
+                {
+                    e.Handled = true;
+                    vm.ToggleAttachedPanePause();
+                    return;
+                }
+
                 if (e.Key == Key.W)
                 {
                     e.Handled = true;
@@ -144,8 +183,43 @@ namespace TGWST.App.Views
                 vm.ClearAttachedPaneClosePrompt();
             }
 
+            if (e.Key == Key.PageUp)
+            {
+                e.Handled = true;
+                ScrollActivePane(pageDown: false, vm);
+                return;
+            }
+
+            if (e.Key == Key.PageDown)
+            {
+                e.Handled = true;
+                ScrollActivePane(pageDown: true, vm);
+                return;
+            }
+
+            if (e.Key == Key.Home)
+            {
+                e.Handled = true;
+                ScrollToEdge(toEnd: false, vm);
+                return;
+            }
+
+            if (e.Key == Key.End)
+            {
+                e.Handled = true;
+                ScrollToEdge(toEnd: true, vm);
+                return;
+            }
+
             if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
+                if (e.Key == Key.P)
+                {
+                    e.Handled = true;
+                    vm.ToggleAttachedPanePause();
+                    return;
+                }
+
                 if (e.Key == Key.W)
                 {
                     e.Handled = true;
@@ -214,6 +288,74 @@ namespace TGWST.App.Views
             {
                 vm.SelectMenuEntry(entry, toggleDetails: true);
                 e.Handled = true;
+            }
+        }
+
+        private void OnOutputScrollLoaded(object sender, RoutedEventArgs e)
+        {
+            _outputScroll = sender as ScrollViewer;
+        }
+
+        private void OnOutputScrollUnloaded(object sender, RoutedEventArgs e)
+        {
+            if (ReferenceEquals(_outputScroll, sender))
+            {
+                _outputScroll = null;
+            }
+        }
+
+        private void OnAttachedScrollLoaded(object sender, RoutedEventArgs e)
+        {
+            _attachedScroll = sender as ScrollViewer;
+        }
+
+        private void OnAttachedScrollUnloaded(object sender, RoutedEventArgs e)
+        {
+            if (ReferenceEquals(_attachedScroll, sender))
+            {
+                _attachedScroll = null;
+            }
+        }
+
+        private void ScrollActivePane(bool pageDown, ShellViewModel vm)
+        {
+            var target = (vm.IsAttachedPaneVisible && _attachedScroll != null)
+                ? _attachedScroll
+                : _outputScroll;
+
+            if (target == null)
+            {
+                return;
+            }
+
+            if (pageDown)
+            {
+                target.PageDown();
+            }
+            else
+            {
+                target.PageUp();
+            }
+        }
+
+        private void ScrollToEdge(bool toEnd, ShellViewModel vm)
+        {
+            var target = (vm.IsAttachedPaneVisible && _attachedScroll != null)
+                ? _attachedScroll
+                : _outputScroll;
+
+            if (target == null)
+            {
+                return;
+            }
+
+            if (toEnd)
+            {
+                target.ScrollToEnd();
+            }
+            else
+            {
+                target.ScrollToHome();
             }
         }
     }

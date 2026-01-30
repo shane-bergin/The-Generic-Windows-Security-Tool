@@ -36,7 +36,8 @@ namespace TGWST.Core.Network
             {
                 EnrichDnsAsync(flow, ct),
                 Task.Run(() => EnrichProcess(flow)),
-                Task.Run(() => EnrichSigner(flow))
+                Task.Run(() => EnrichSigner(flow)),
+                Task.Run(() => EnrichGeo(flow))
             };
 
             await Task.WhenAll(tasks);

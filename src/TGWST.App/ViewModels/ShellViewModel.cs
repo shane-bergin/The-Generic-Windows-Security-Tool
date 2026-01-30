@@ -26,6 +26,7 @@ namespace TGWST.App.ViewModels
         private ProgressViewModel? _attachedPane;
         private CancellationTokenSource? _attachedPaneCts;
         private bool _attachedPaneCloseConfirm;
+        private bool _attachedPanePaused;
 
         private string _commandLine = string.Empty;
         public string CommandLine
@@ -41,7 +42,7 @@ namespace TGWST.App.ViewModels
             private set => SetProperty(ref _promptPrefix, value);
         }
 
-        public string FooterHints => "F2:Acronyms • ↑/↓:Menu • →:Details • Ctrl+↑/↓:History • Ctrl+W:Pane • Enter:Run • ←:Back • F3:Explain • F4:Summary • F10:Quit";
+        public string FooterHints => "F2 Acronyms  │  ↑↓ Menu  │  → Details  │  ^↑↓ History  │  PgUp/Dn Scroll  │  ^P Pause  │  ^W Close Pane  │  ⏎ Run  │  ← Back  │  F3 Explain  │  F4 Summary  │  F10 Quit";
 
         private string _breadcrumb = "Home";
         public string Breadcrumb
@@ -76,6 +77,12 @@ namespace TGWST.App.ViewModels
         public string AttachedPaneClosePrompt => _attachedPaneCloseConfirm
             ? "Close pane? Press Ctrl+W again to confirm."
             : string.Empty;
+
+        public bool IsAttachedPanePaused
+        {
+            get => _attachedPanePaused;
+            private set => SetProperty(ref _attachedPanePaused, value);
+        }
 
         private readonly List<string> _history = new();
         private int _historyIndex = -1;
@@ -232,7 +239,13 @@ namespace TGWST.App.ViewModels
 
         private void WriteBanner()
         {
-            AddOutput("Type `help` for commands. See footer for keyboard shortcuts.\n");
+            AddOutput("╔═══════════════════════════════════════════════════════════════════════════╗\n");
+            AddOutput("║                  The Generic Windows Security Tool                        ║\n");
+            AddOutput("╠═══════════════════════════════════════════════════════════════════════════╣\n");
+            AddOutput("║ Type 'help' for available commands                                       ║\n");
+            AddOutput("║ Use ↑/↓ to navigate menu, → for details, ⏎ to execute                    ║\n");
+            AddOutput("║ See footer for complete keyboard shortcuts                               ║\n");
+            AddOutput("╚═══════════════════════════════════════════════════════════════════════════╝\n\n");
         }
 
         private void BuildMenu()
@@ -731,6 +744,7 @@ namespace TGWST.App.ViewModels
             AttachedPane = pane;
             _attachedPaneCts = new CancellationTokenSource();
             _attachedPaneCloseConfirm = false;
+            IsAttachedPanePaused = false;
             OnPropertyChanged(nameof(IsAttachedPaneClosePromptVisible));
             OnPropertyChanged(nameof(AttachedPaneClosePrompt));
             return new AttachedPaneSession(pane, _attachedPaneCts);
@@ -759,6 +773,12 @@ namespace TGWST.App.ViewModels
             OnPropertyChanged(nameof(AttachedPaneClosePrompt));
         }
 
+        public void ToggleAttachedPanePause()
+        {
+            if (AttachedPane == null) return;
+            IsAttachedPanePaused = !IsAttachedPanePaused;
+        }
+
         public void CloseAttachedPane(bool force)
         {
             if (AttachedPane == null) return;
@@ -774,6 +794,7 @@ namespace TGWST.App.ViewModels
             _attachedPaneCts = null;
             AttachedPane = null;
             _attachedPaneCloseConfirm = false;
+            IsAttachedPanePaused = false;
             OnPropertyChanged(nameof(IsAttachedPaneClosePromptVisible));
             OnPropertyChanged(nameof(AttachedPaneClosePrompt));
         }
@@ -788,8 +809,8 @@ namespace TGWST.App.ViewModels
         private void UpdatePromptPrefix(bool isAdmin)
         {
             PromptPrefix = isAdmin
-                ? $"tgwst [Administrator] {DefaultStatus} > "
-                : $"tgwst {DefaultStatus} > ";
+                ? $"▶ tgwst [Administrator] {DefaultStatus} │"
+                : $"▶ tgwst {DefaultStatus} │";
         }
     }
 
