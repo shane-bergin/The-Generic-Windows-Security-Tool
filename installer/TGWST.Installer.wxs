@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Product Id="*" Name="TGWST - Windows Security Tool" Language="1033" Version="$(var.ProductVersion)" Manufacturer="Shane Bergin" UpgradeCode="BE64B133-8D56-45A3-9C7E-5F89A0A3CC01">
-    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" />
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" InstallPrivileges="elevated" Platform="x64" />
+    <Condition Message="Administrator privileges are required to install TGWST. Please re-run setup as administrator.">
+      Privileged
+    </Condition>
 
     <MajorUpgrade DowngradeErrorMessage="A later version of TGWST is already installed."
                   AllowSameVersionUpgrades="yes"
@@ -12,8 +15,7 @@
     <Property Id="ARPHELPLINK" Value="https://github.com/shane-bergin/The-Generic-Windows-Security-Tool" />
     <Property Id="ARPNOREPAIR" Value="1" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
-    <Property Id="ARPCOMMENTS" Value="TGWST - Windows 11 Security Hardening, Compliance, Scan Tool" />
-    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="ARPCOMMENTS" Value="TGWST - Windows 11 Security Hardening, Network Visibility, and Scan Tool" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
@@ -25,7 +27,6 @@
       <Directory Id="DesktopFolder" />
       <Directory Id="CommonAppDataFolder">
         <Directory Id="TGWSTAppData" Name="TGWST">
-          <Directory Id="BaselinesDir" Name="Baselines" />
           <Directory Id="WdacDataDir" Name="WDAC" />
           <Directory Id="ModelsDir" Name="Models" />
         </Directory>
@@ -37,13 +38,12 @@
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="AppIconFile" />
-      <ComponentRef Id="BaselineFile" />
       <ComponentRef Id="WdacDataFolder" />
       <ComponentRef Id="RemoveAppDataDir" />
       <ComponentRef Id="RemoveInstallDir" />
     </Feature>
 
-    <UIRef Id="WixUI_InstallDir" />
+    <UIRef Id="WixUI_Minimal" />
 
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch The Generic Windows Security Tool" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
@@ -99,14 +99,6 @@
                   Description="The Generic Windows Security Tool"
                   Icon="AppIcon" />
         <RegistryValue Root="HKCU" Key="Software\TGWST" Name="DesktopShortcut" Value="1" Type="integer" KeyPath="yes" />
-      </Component>
-    </DirectoryRef>
-  </Fragment>
-
-  <Fragment>
-    <DirectoryRef Id="BaselinesDir">
-      <Component Id="BaselineFile" Guid="*">
-        <File Id="TGWST_Balanced.csv" Source="..\assets\Baselines\TGWST_Balanced.csv" />
       </Component>
     </DirectoryRef>
   </Fragment>

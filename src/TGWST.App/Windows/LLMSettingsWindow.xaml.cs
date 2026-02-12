@@ -61,7 +61,6 @@ namespace TGWST.App.Windows
             {
                 settings.Save();
                 MessageBox.Show("LLM settings saved.", "LLM Settings", MessageBoxButton.OK, MessageBoxImage.Information);
-                DialogResult = true;
                 Close();
             }
             catch (Exception ex)
@@ -72,7 +71,6 @@ namespace TGWST.App.Windows
 
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = false;
             Close();
         }
     }

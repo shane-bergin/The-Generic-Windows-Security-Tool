@@ -45,11 +45,24 @@ function Copy-Stage {
     param([string]$source, [string]$destination)
     Write-Host "Staging payload from $source to $destination ..."
     Ensure-CleanDir -path $destination
-    $robocopyArgs = @($source, $destination, "*.*", "/E", "/XF", "*.pdb", "/NFL", "/NDL", "/NJH", "/NJS", "/NC", "/NS", "/XO")
-    & robocopy @robocopyArgs | Out-Null
-    $exitCode = $LASTEXITCODE
-    if ($exitCode -gt 3) {
-        throw "robocopy failed with exit code $exitCode"
+    if (-not (Test-Path $source)) {
+        throw "Stage source path does not exist: $source"
+    }
+
+    $items = Get-ChildItem -Path $source -Force -ErrorAction Stop
+    if ($items.Count -eq 0) {
+        throw "Stage source path is empty: $source"
+    }
+
+    foreach ($item in $items) {
+        Copy-Item -Path $item.FullName -Destination $destination -Recurse -Force
+    }
+
+    Get-ChildItem -Path $destination -Recurse -Filter *.pdb -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+
+    $stagedFileCount = (Get-ChildItem -Path $destination -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+    if ($stagedFileCount -eq 0) {
+        throw "Staging produced no files in destination: $destination"
     }
 }
 
@@ -58,6 +71,7 @@ function Get-DotNetExe {
     if ($cmd -and $cmd.Path) { return $cmd.Path }
 
     $candidates = @(
+        "/mnt/c/Program Files/dotnet/dotnet.exe",
         (Join-Path ${env:ProgramW6432} "dotnet\dotnet.exe"),
         (Join-Path ${env:ProgramFiles} "dotnet\dotnet.exe"),
         (Join-Path ${env:ProgramFiles(x86)} "dotnet\dotnet.exe")
@@ -139,7 +153,8 @@ function Write-BuildStamp {
 try {
     $repoRoot = Split-Path -Parent $PSScriptRoot
     $project = Join-Path $repoRoot "src\TGWST.App\TGWST.App.csproj"
-    $publishDir = Join-Path $OutputDir "publish"
+    $publishAppDir = Join-Path $OutputDir "publish_app"
+    $publishUpdaterDir = Join-Path $OutputDir "publish_updater"
     $stageDir = Join-Path $OutputDir "_msi_stage"
     $objDir = Join-Path $OutputDir "obj"
     $harvestFile = Join-Path $objDir "HarvestedFiles.wxs"
@@ -149,7 +164,8 @@ try {
     $licenseRtf = Join-Path $PSScriptRoot "MIT_LICENSE.rtf"
     $dotnetExe = Get-DotNetExe
 
-    Ensure-CleanDir -path $publishDir
+    Ensure-CleanDir -path $publishAppDir
+    Ensure-CleanDir -path $publishUpdaterDir
     Ensure-CleanDir -path $stageDir
     Ensure-CleanDir -path $objDir
 
@@ -162,7 +178,14 @@ try {
         /p:PublishSingleFile=true `
         /p:IncludeAllContentForSelfExtract=true `
         /p:PublishTrimmed=false `
-        -o $publishDir
+        -o $publishAppDir
+    if ($null -eq $LASTEXITCODE) {
+        throw "TGWST publish did not return an exit code. Run installer/build-msi.ps1 from Windows PowerShell where dotnet.exe can execute."
+    }
+    if ($LASTEXITCODE -ne 0) {
+        $publishExit = $LASTEXITCODE
+        throw "TGWST publish failed with exit code $publishExit"
+    }
 
     Write-Host "Publishing TGWST Updater..."
     $updaterProject = Join-Path $repoRoot "src\TGWST.Updater\TGWST.Updater.csproj"
@@ -173,9 +196,17 @@ try {
         /p:PublishSingleFile=true `
         /p:IncludeAllContentForSelfExtract=true `
         /p:PublishTrimmed=false `
-        -o $publishDir
+        -o $publishUpdaterDir
+    if ($null -eq $LASTEXITCODE) {
+        throw "TGWST Updater publish did not return an exit code. Run installer/build-msi.ps1 from Windows PowerShell where dotnet.exe can execute."
+    }
+    if ($LASTEXITCODE -ne 0) {
+        $publishExit = $LASTEXITCODE
+        throw "TGWST Updater publish failed with exit code $publishExit"
+    }
 
-    Copy-Stage -source $publishDir -destination $stageDir
+    Copy-Stage -source $publishAppDir -destination $stageDir
+    Copy-Item -Path (Join-Path $publishUpdaterDir "*") -Destination $stageDir -Recurse -Force
     $wdacStage = Join-Path $stageDir "WDAC"
     if (-not (Test-Path $wdacStage)) {
         throw "WDAC payload missing from publish output ($wdacStage). Ensure Assets\WDAC content is copied during publish."
@@ -216,7 +247,8 @@ try {
     if (-not $commitId) { $commitId = "unknown" }
 
     $stampPaths = @(
-        Write-BuildStamp -targetDir $publishDir -version $productVersion -commit $commitId
+        Write-BuildStamp -targetDir $publishAppDir -version $productVersion -commit $commitId
+        Write-BuildStamp -targetDir $publishUpdaterDir -version $productVersion -commit $commitId
         Write-BuildStamp -targetDir $stageDir -version $productVersion -commit $commitId
     )
     Write-Host "Build stamp written to: $($stampPaths -join ', ')"
@@ -227,6 +259,10 @@ try {
 
     Write-Host "Harvesting staged files with heat..."
     & $heat dir $stageDir -cg HarvestedFiles -dr INSTALLFOLDER -srd -sreg -var var.StageDir -out $harvestFile -gg -platform x64 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        $heatExit = if ($null -eq $LASTEXITCODE) { "unknown" } else { $LASTEXITCODE }
+        throw "WiX heat.exe failed with exit code $heatExit"
+    }
 
     (Get-Content $harvestFile) -replace '<Component ', '<Component Win64="yes" ' | Set-Content $harvestFile
 
@@ -240,9 +276,17 @@ try {
         -out "$objDir\" `
         $wxsFile `
         $harvestFile
+    if ($LASTEXITCODE -ne 0) {
+        $candleExit = if ($null -eq $LASTEXITCODE) { "unknown" } else { $LASTEXITCODE }
+        throw "WiX candle.exe failed with exit code $candleExit"
+    }
 
     Write-Host "Linking MSI..."
     & $light -nologo -ext WixUIExtension -ext WixUtilExtension -out $msiOutput "$objDir\TGWST.Installer.wixobj" "$objDir\HarvestedFiles.wixobj"
+    if ($LASTEXITCODE -ne 0) {
+        $lightExit = if ($null -eq $LASTEXITCODE) { "unknown" } else { $LASTEXITCODE }
+        throw "WiX light.exe failed with exit code $lightExit"
+    }
 
     if (Test-Path $msiOutput) {
         $signCert = $env:SIGN_CERT
@@ -256,6 +300,10 @@ try {
             $timestamp = if ($env:SIGN_TIMESTAMP) { $env:SIGN_TIMESTAMP } else { "http://timestamp.digicert.com" }
             Write-Host "Signing MSI with $signtoolPath ..."
             & $signtoolPath sign /fd sha256 /f "$signCert" /p "$signPwd" /tr "$timestamp" /td sha256 "$msiOutput"
+            if ($LASTEXITCODE -ne 0) {
+                $signExit = if ($null -eq $LASTEXITCODE) { "unknown" } else { $LASTEXITCODE }
+                throw "MSI signing failed with exit code $signExit"
+            }
         } else {
             Write-Host "Signing skipped (missing SIGN_CERT/SIGN_PWD or SIGNTOOL_PATH)."
         }
@@ -267,6 +315,9 @@ try {
 
     $distDir = Join-Path $PSScriptRoot "..\INSTALL_FROM_HERE"
     if (Test-Path $msiOutput -PathType Leaf) {
+        if (-not (Test-Path $distDir)) {
+            New-Item -ItemType Directory -Path $distDir -Force | Out-Null
+        }
         Copy-Item $msiOutput $distDir -Force
         Write-Host "Copied to $distDir"
     }

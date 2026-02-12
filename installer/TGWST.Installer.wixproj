@@ -5,7 +5,9 @@
     <OutputName>TGWST.Setup</OutputName>
     <OutputType>Package</OutputType>
     <Platform>x64</Platform>
-    <WixTargetsPath Condition=" '$(WixTargetsPath)' == '' ">$(MSBuildExtensionsPath)\Microsoft\WiX\v3.x\Wix.targets</WixTargetsPath>
+    <WixTargetsPath Condition=" '$(WixTargetsPath)' == '' and Exists('$(MSBuildExtensionsPath)\Microsoft\WiX\v3.x\Wix.targets') ">$(MSBuildExtensionsPath)\Microsoft\WiX\v3.x\Wix.targets</WixTargetsPath>
+    <WixTargetsPath Condition=" '$(WixTargetsPath)' == '' and Exists('$(ProgramFiles(x86))\WiX Toolset v3.11\bin\Wix.targets') ">$(ProgramFiles(x86))\WiX Toolset v3.11\bin\Wix.targets</WixTargetsPath>
+    <WixTargetsPath Condition=" '$(WixTargetsPath)' == '' and Exists('$(ProgramFiles)\WiX Toolset v3.11\bin\Wix.targets') ">$(ProgramFiles)\WiX Toolset v3.11\bin\Wix.targets</WixTargetsPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="TGWST.Installer.wxs" />
@@ -14,5 +16,8 @@
     <WixExtension Include="WixUIExtension" />
     <WixExtension Include="WixUtilExtension" />
   </ItemGroup>
-  <Import Project="$(WixTargetsPath)" />
+  <Target Name="Build" Condition=" !Exists('$(WixTargetsPath)') ">
+    <Error Text="WiX Toolset v3.11 is required to build installer/TGWST.Installer.wixproj. Install WiX v3.11 or run installer/build-msi.ps1 with WIX_BIN set to your WiX bin path." />
+  </Target>
+  <Import Project="$(WixTargetsPath)" Condition=" Exists('$(WixTargetsPath)') " />
 </Project>

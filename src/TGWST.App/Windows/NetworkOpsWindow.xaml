@@ -1,0 +1,296 @@
+<Window x:Class="TGWST.App.Windows.NetworkOpsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TGWST - Network Operations"
+        Width="1120"
+        Height="760"
+        MinWidth="960"
+        MinHeight="640"
+        Background="#1A1F2B"
+        FontFamily="Cascadia Mono, Consolas"
+        WindowStartupLocation="CenterOwner"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Aliased"
+        TextOptions.TextHintingMode="Fixed">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Panel" Color="#21293A" />
+        <SolidColorBrush x:Key="Panel2" Color="#1D2535" />
+        <SolidColorBrush x:Key="Line" Color="#3C4C68" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#DEE7F6" />
+        <SolidColorBrush x:Key="TextMuted" Color="#94A4C1" />
+        <SolidColorBrush x:Key="Green" Color="#8ED26D" />
+        <SolidColorBrush x:Key="Amber" Color="#D9BA70" />
+        <SolidColorBrush x:Key="Red" Color="#E16E74" />
+        <SolidColorBrush x:Key="Blue" Color="#64A7E2" />
+        <SolidColorBrush x:Key="Cyan" Color="#7EC7FF" />
+    </Window.Resources>
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="1"
+                Background="{StaticResource Panel}"
+                Padding="8,5">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock FontSize="10" Foreground="{StaticResource Cyan}" Text="[NETWORK OPERATIONS COMMAND CENTER]" />
+                    <TextBlock x:Name="HeaderStatusText" Margin="0,2,0,0" FontSize="9" Foreground="{StaticResource TextMuted}" Text="Initializing..." />
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="RefreshNowButton"
+                            Width="96"
+                            Margin="0,0,6,0"
+                            Content="Refresh"
+                            Click="RefreshNowButton_Click" />
+                    <Button x:Name="OpenWslCredsButton"
+                            Width="128"
+                            Margin="0,0,6,0"
+                            Content="WSL Credentials"
+                            Click="OpenWslCredsButton_Click" />
+                    <Button Width="84"
+                            Content="Close"
+                            Click="CloseButton_Click" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <TabControl x:Name="ModeTabs"
+                    Grid.Row="1"
+                    Margin="0,6,0,0"
+                    Background="{StaticResource Panel2}"
+                    Foreground="{StaticResource TextPrimary}"
+                    BorderBrush="{StaticResource Line}"
+                    BorderThickness="1">
+            <TabItem Header="Overview">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+                        <Border Margin="0,0,8,8" Padding="8,6" Width="170" Background="#27324A" BorderBrush="#4A5B79" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="ACTIVE" FontSize="9" Foreground="{StaticResource TextMuted}" />
+                                <TextBlock x:Name="TotalConnectionsValue" Text="0" FontSize="20" Foreground="{StaticResource Green}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="0,0,8,8" Padding="8,6" Width="170" Background="#27324A" BorderBrush="#4A5B79" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="PROCESSES" FontSize="9" Foreground="{StaticResource TextMuted}" />
+                                <TextBlock x:Name="UniqueProcessesValue" Text="0" FontSize="20" Foreground="{StaticResource Cyan}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="0,0,8,8" Padding="8,6" Width="170" Background="#27324A" BorderBrush="#4A5B79" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="ESTABLISHED" FontSize="9" Foreground="{StaticResource TextMuted}" />
+                                <TextBlock x:Name="EstablishedValue" Text="0" FontSize="20" Foreground="{StaticResource Blue}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="0,0,8,8" Padding="8,6" Width="170" Background="#27324A" BorderBrush="#4A5B79" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="UNIQUE REMOTES" FontSize="9" Foreground="{StaticResource TextMuted}" />
+                                <TextBlock x:Name="UniqueRemotesValue" Text="0" FontSize="20" Foreground="{StaticResource Amber}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="0,0,8,8" Padding="8,6" Width="230" Background="#27324A" BorderBrush="#4A5B79" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="LAST UPDATE" FontSize="9" Foreground="{StaticResource TextMuted}" />
+                                <TextBlock x:Name="LastUpdateValue" Text="-" FontSize="14" Foreground="{StaticResource TextPrimary}" />
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Margin="0,0,6,0" Padding="6" Background="#243249" BorderBrush="#4F6483" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock FontSize="9" Foreground="{StaticResource Blue}" Text="Connection Trend (last 50 polls)" />
+                                <Canvas Height="64" Margin="0,4,0,0" Background="#1A2232">
+                                    <Polyline x:Name="ConnectionsSparkline"
+                                              Stroke="#7EC7FF"
+                                              StrokeThickness="1.6" />
+                                </Canvas>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Margin="6,0,0,0" Padding="6" Background="#243249" BorderBrush="#4F6483" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock FontSize="9" Foreground="{StaticResource Blue}" Text="Process Trend (last 50 polls)" />
+                                <Canvas Height="64" Margin="0,4,0,0" Background="#1A2232">
+                                    <Polyline x:Name="ProcessesSparkline"
+                                              Stroke="#8ED26D"
+                                              StrokeThickness="1.6" />
+                                </Canvas>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Padding="6,4" Background="#243249" BorderBrush="#4F6483" BorderThickness="1">
+                            <DockPanel>
+                                <TextBlock FontSize="9" Foreground="{StaticResource Cyan}" Text="[TOP ENDPOINTS] filter + select for live details | double-click to isolate in new window" />
+                                <TextBox x:Name="EndpointFilterBox"
+                                         DockPanel.Dock="Right"
+                                         Width="220"
+                                         Margin="8,0,0,0"
+                                         Padding="4,1"
+                                         FontSize="9"
+                                         Background="#1A2232"
+                                         Foreground="{StaticResource TextPrimary}"
+                                         BorderBrush="#4F6483"
+                                         BorderThickness="1"
+                                         TextChanged="EndpointFilterBox_TextChanged"
+                                         ToolTip="Filter: process / host / ip / port / state / pid" />
+                                <TextBlock x:Name="OverviewStatusText" DockPanel.Dock="Right" FontSize="9" Foreground="{StaticResource TextMuted}" Text="-" />
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Margin="0,4,0,0" Padding="4" Background="#1A2232" BorderBrush="#3F5472" BorderThickness="1">
+                            <ListView x:Name="EndpointList"
+                                      MouseDoubleClick="EndpointList_MouseDoubleClick"
+                                      SelectionChanged="EndpointList_SelectionChanged"
+                                      Background="#1A2232"
+                                      BorderThickness="0"
+                                      Foreground="{StaticResource TextPrimary}">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Width="170" Header="Process" DisplayMemberBinding="{Binding ProcessName}" />
+                                        <GridViewColumn Width="180" Header="Local" DisplayMemberBinding="{Binding LocalDisplay}" />
+                                        <GridViewColumn Width="290" Header="Remote" DisplayMemberBinding="{Binding RemoteDisplay}" />
+                                        <GridViewColumn Width="80" Header="Proto" DisplayMemberBinding="{Binding Protocol}" />
+                                        <GridViewColumn Width="130" Header="State" DisplayMemberBinding="{Binding State}" />
+                                        <GridViewColumn Width="70" Header="PID" DisplayMemberBinding="{Binding Pid}" />
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </Border>
+
+                        <Border Grid.Row="2"
+                                Margin="0,4,0,0"
+                                Padding="6,4"
+                                Background="#243249"
+                                BorderBrush="#4F6483"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock x:Name="SelectedEndpointPrimary"
+                                           FontSize="9"
+                                           Foreground="{StaticResource TextPrimary}"
+                                           Text="[SELECTED ENDPOINT] none" />
+                                <TextBlock x:Name="SelectedEndpointSecondary"
+                                           Margin="0,1,0,0"
+                                           FontSize="9"
+                                           Foreground="{StaticResource TextMuted}"
+                                           Text="Select a row to view local/remote route and DNS context." />
+                                <TextBlock x:Name="SelectedEndpointInsight"
+                                           Margin="0,1,0,0"
+                                           FontSize="9"
+                                           Foreground="{StaticResource Amber}"
+                                           Text="Insight: -" />
+                                <TextBlock x:Name="SelectedEndpointDnsEvidence"
+                                           Margin="0,1,0,0"
+                                           FontSize="9"
+                                           Foreground="{StaticResource TextMuted}"
+                                           Text="DNS evidence: -" />
+                                <TextBlock x:Name="SelectedEndpointHistory"
+                                           Margin="0,1,0,0"
+                                           FontSize="9"
+                                           Foreground="{StaticResource TextPrimary}"
+                                           Text="History pull: -" />
+                                <TextBlock x:Name="SelectedEndpointActions"
+                                           Margin="0,1,0,0"
+                                           FontSize="9"
+                                           Foreground="{StaticResource TextPrimary}"
+                                           Text="Action mix: -" />
+                                <TextBlock x:Name="SelectedEndpointRecordSource"
+                                           Margin="0,1,0,0"
+                                           FontSize="9"
+                                           Foreground="{StaticResource TextMuted}"
+                                           Text="Record source: -" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Pi-hole / Hybrid">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Padding="8,6" Background="#243249" BorderBrush="#4F6483" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock FontSize="10" Foreground="{StaticResource Blue}" Text="[WSL + PI-HOLE STATUS]" />
+                            <TextBlock x:Name="PiholeStatusLine" Margin="0,4,0,0" FontSize="10" Foreground="{StaticResource TextPrimary}" Text="Status: -" />
+                            <TextBlock x:Name="PiholeDistroLine" Margin="0,1,0,0" FontSize="10" Foreground="{StaticResource TextPrimary}" Text="Distro: -" />
+                            <TextBlock x:Name="HybridLine" Margin="0,1,0,0" FontSize="10" Foreground="{StaticResource TextPrimary}" Text="Hybrid: -" />
+                            <TextBlock x:Name="CredCacheLine" Margin="0,1,0,0" FontSize="10" Foreground="{StaticResource TextPrimary}" Text="WSL Cred Cache: -" />
+                            <TextBlock x:Name="PiholeReasonLine" Margin="0,2,0,0" FontSize="9" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Text="Detail: -" />
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Grid.Row="1" Margin="0,6,0,6" Orientation="Horizontal">
+                        <Button Width="124" Margin="0,0,6,0" Content="Refresh Status" Click="RefreshPiHoleButton_Click" />
+                        <Button Width="132" Margin="0,0,6,0" Content="Refresh Top Blocked" Click="RefreshTopBlockedButton_Click" />
+                        <Button Width="102" Margin="0,0,6,0" Content="Enable" Click="EnablePiHoleButton_Click" />
+                        <Button Width="116" Margin="0,0,6,0" Content="Disable 5m" Click="DisablePiHoleButton_Click" />
+                        <Button Width="122" Margin="0,0,6,0" Content="Update Gravity" Click="UpdateGravityButton_Click" />
+                        <TextBlock x:Name="PiHoleActionStatusText"
+                                   VerticalAlignment="Center"
+                                   FontSize="9"
+                                   Foreground="{StaticResource TextMuted}"
+                                   Text="-" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2" Padding="4" Background="#1A2232" BorderBrush="#3F5472" BorderThickness="1">
+                        <ListView x:Name="TopBlockedList"
+                                  Background="#1A2232"
+                                  BorderThickness="0"
+                                  Foreground="{StaticResource TextPrimary}">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Width="420" Header="Domain" DisplayMemberBinding="{Binding Domain}" />
+                                    <GridViewColumn Width="120" Header="Blocked" DisplayMemberBinding="{Binding BlockedCount}" />
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="2"
+                Margin="0,6,0,0"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="1"
+                Background="{StaticResource Panel}"
+                Padding="8,4">
+            <TextBlock x:Name="FooterText"
+                       FontSize="9"
+                       Foreground="{StaticResource TextMuted}"
+                       Text="Dynamic dashboard active. Terminal remains available for command-level operations." />
+        </Border>
+    </Grid>
+</Window>

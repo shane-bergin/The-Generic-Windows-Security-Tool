@@ -12,7 +12,7 @@
         Topmost="True">
     <Grid>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <Image Source="Assets/TGWST.png"
+            <Image Source="/Assets/TGWST.png"
                    Width="150"
                    Height="150"
                    Stretch="Uniform"

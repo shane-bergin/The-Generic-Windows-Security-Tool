@@ -26,22 +26,46 @@ namespace TGWST.App.Shell
 
             async Task PumpAsync(StreamReader reader)
             {
-                while (!reader.EndOfStream && !ct.IsCancellationRequested)
+                while (!ct.IsCancellationRequested)
                 {
-                    var line = await reader.ReadLineAsync();
-                    if (line != null)
+                    var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                    if (line is null)
+                    {
+                        break;
+                    }
+
+                    if (line.Length > 0)
                     {
                         onLine(line + "\n");
                     }
                 }
             }
 
-            var stdoutTask = PumpAsync(process.StandardOutput);
-            var stderrTask = PumpAsync(process.StandardError);
+            try
+            {
+                var stdoutTask = PumpAsync(process.StandardOutput);
+                var stderrTask = PumpAsync(process.StandardError);
 
-            await Task.WhenAll(stdoutTask, stderrTask);
-            await process.WaitForExitAsync(ct);
-            return process.ExitCode;
+                await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
+                await process.WaitForExitAsync(ct).ConfigureAwait(false);
+                return process.ExitCode;
+            }
+            catch (OperationCanceledException)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch
+                {
+                    // best effort cleanup
+                }
+
+                throw;
+            }
         }
     }
 }

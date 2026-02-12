@@ -10,7 +10,7 @@
         FontFamily="Cascadia Code, Cascadia Mono, Consolas"
         WindowStartupLocation="CenterOwner"
         TextOptions.TextFormattingMode="Display"
-        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextRenderingMode="Aliased"
         TextOptions.TextHintingMode="Fixed"
         SnapsToDevicePixels="True">
     <Window.Resources>
@@ -76,8 +76,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Margin="0,0,0,10"
-                                       FontSize="13"
-                                       LineHeight="20"
+                                       FontSize="12"
+                                       LineHeight="14"
                                        TextWrapping="Wrap"
                                        xml:space="preserve"
                                        Text="{Binding DisplayText}">
@@ -85,6 +85,21 @@
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
                                         <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ColorTag}" Value="success">
+                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ColorTag}" Value="error">
+                                                <Setter Property="Foreground" Value="{StaticResource Error}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ColorTag}" Value="warning">
+                                                <Setter Property="Foreground" Value="{StaticResource Warning}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ColorTag}" Value="info">
+                                                <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ColorTag}" Value="accent">
+                                                <Setter Property="Foreground" Value="{StaticResource AccentBright}" />
+                                            </DataTrigger>
                                             <DataTrigger Binding="{Binding IsAcronymsExpanded}" Value="True">
                                                 <Setter Property="Foreground" Value="{StaticResource AcronymExpanded}" />
                                             </DataTrigger>

@@ -237,6 +237,65 @@ namespace TGWST.Core.Network
         }
 
         /// <summary>
+        /// Get flow records for a specific endpoint within a time range.
+        /// </summary>
+        public IEnumerable<FlowRecord> GetFlowsByEndpoint(
+            string remoteAddress,
+            int remotePort,
+            int? processId,
+            DateTime since,
+            int limit = 200)
+        {
+            var safeAddress = (remoteAddress ?? string.Empty).Trim();
+            var safeLimit = Math.Clamp(limit, 1, 2000);
+
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = processId.HasValue && processId.Value > 0
+                ? @"
+                SELECT flow_id, process_id, process_name, process_path, process_signer,
+                       protocol, local_address, local_port, remote_address, remote_port,
+                       remote_hostname, remote_country, bytes_sent, bytes_received,
+                       packets_sent, packets_received, first_seen, last_seen,
+                       matched_rule, action
+                FROM flows
+                WHERE remote_address = @address
+                  AND remote_port = @port
+                  AND process_id = @pid
+                  AND first_seen >= @since
+                ORDER BY first_seen DESC
+                LIMIT @limit
+            "
+                : @"
+                SELECT flow_id, process_id, process_name, process_path, process_signer,
+                       protocol, local_address, local_port, remote_address, remote_port,
+                       remote_hostname, remote_country, bytes_sent, bytes_received,
+                       packets_sent, packets_received, first_seen, last_seen,
+                       matched_rule, action
+                FROM flows
+                WHERE remote_address = @address
+                  AND remote_port = @port
+                  AND first_seen >= @since
+                ORDER BY first_seen DESC
+                LIMIT @limit
+            ";
+
+            cmd.Parameters.AddWithValue("@address", safeAddress);
+            cmd.Parameters.AddWithValue("@port", remotePort);
+            cmd.Parameters.AddWithValue("@since", since.ToString("O"));
+            cmd.Parameters.AddWithValue("@limit", safeLimit);
+            if (processId.HasValue && processId.Value > 0)
+            {
+                cmd.Parameters.AddWithValue("@pid", processId.Value);
+            }
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                yield return ReadFlowRecord(reader);
+            }
+        }
+
+        /// <summary>
         /// Get recent flow records within a time range.
         /// </summary>
         public IEnumerable<FlowRecord> GetRecentFlows(DateTime since, int limit = 500)

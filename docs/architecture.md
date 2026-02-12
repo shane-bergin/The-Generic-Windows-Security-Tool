@@ -49,7 +49,7 @@ Network Monitoring (current implementation)
 - The monitor runs in the attached pane and supports pause + scroll.
 
 Security Operations
-- ASR, WDAC, Defender scan, compliance, uninstall/remnants are implemented as command handlers.
+- ASR, WDAC, Defender scan, network operations, and uninstall/remnants are implemented as command handlers.
 - Actions snapshot state before changes and support rollback where possible.
 - WDAC dev-allow command generates a supplemental policy for developer workflows.
 

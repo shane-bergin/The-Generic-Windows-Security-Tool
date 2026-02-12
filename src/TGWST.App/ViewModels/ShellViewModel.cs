@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace TGWST.App.ViewModels
 {
     public sealed class ShellViewModel : ObservableObject
     {
-        private const string DefaultStatus = "WDAC:Audit | UMCI:Enabled";
+        private const string DefaultStatus = "wdac:audit umci:enabled";
 
         public ObservableCollection<OutputBlock> Output { get; } = new();
         public ObservableCollection<MenuEntryViewModel> MenuEntries { get; } = new();
@@ -42,7 +43,7 @@ namespace TGWST.App.ViewModels
             private set => SetProperty(ref _promptPrefix, value);
         }
 
-        public string FooterHints => "F2 Acronyms  │  ↑↓ Menu  │  → Details  │  ^↑↓ History  │  PgUp/Dn Scroll  │  ^P Pause  │  ^W Close Pane  │  ⏎ Run  │  ← Back  │  F3 Explain  │  F4 Summary  │  F10 Quit";
+        public string FooterHints => "F2 Acronyms | ↑↓ Menu | → Details | Ctrl+↑↓ History | PgUp/Dn Scroll | Ctrl+P Pause | Ctrl+W Close Pane | Enter Run | ← Back | F3 Explain | F4 Summary | F10 Quit";
 
         private string _breadcrumb = "Home";
         public string Breadcrumb
@@ -161,7 +162,8 @@ namespace TGWST.App.ViewModels
                 return;
             }
 
-            dispatcher?.Invoke(() => Output.Add(new OutputBlock(text, display, _acronymsExpanded)));
+            _ = dispatcher?.BeginInvoke(new Action(() =>
+                Output.Add(new OutputBlock(text, display, _acronymsExpanded))));
         }
 
         public void ClearOutput()
@@ -173,7 +175,7 @@ namespace TGWST.App.ViewModels
                 return;
             }
 
-            dispatcher?.Invoke(Output.Clear);
+            _ = dispatcher?.BeginInvoke(new Action(Output.Clear));
         }
 
         public void ToggleAcronyms()
@@ -183,16 +185,22 @@ namespace TGWST.App.ViewModels
 
         public async Task ExplainLastBlockAsync()
         {
-            var last = Output.LastOrDefault();
-            if (last == null)
+            var blocks = GetRecentMeaningfulBlocks(maxBlocks: 4, excludeInsightBlocks: true);
+            if (blocks.Length == 0)
             {
-                AddOutput("[info] No output to explain.\n");
+                AddOutput("[info] No meaningful output to explain.\n");
                 return;
             }
 
+            var input = blocks[^1];
+            if (input.Length < 180 && blocks.Length > 1)
+            {
+                input = string.Join("\n---\n", blocks.TakeLast(2));
+            }
+
             var progressVm = _outputService.CreateAndShow("Explain Last Block", _acronymsExpanded);
-            progressVm.Append("Analyzing last block...\n");
-            var result = await _insightService.ExplainAsync(last.RawText);
+            progressVm.Append("Analyzing most recent meaningful output...\n");
+            var result = await _insightService.ExplainAsync(input);
             progressVm.Append(result + "\n");
             progressVm.Status = "Completed";
         }
@@ -205,13 +213,86 @@ namespace TGWST.App.ViewModels
                 return;
             }
 
-            var blocks = Output.TakeLast(6).Select(b => b.RawText).ToArray();
+            var blocks = GetRecentMeaningfulBlocks(maxBlocks: 12, excludeInsightBlocks: true);
+
+            if (blocks.Length == 0)
+            {
+                AddOutput("[info] No meaningful output blocks to summarize.\n");
+                return;
+            }
+
             var input = string.Join("\n---\n", blocks);
             var progressVm = _outputService.CreateAndShow("Summarize Output", _acronymsExpanded);
             progressVm.Append("Summarizing last output blocks...\n");
             var result = await _insightService.SummarizeAsync(input);
             progressVm.Append(result + "\n");
             progressVm.Status = "Completed";
+        }
+
+        private string[] GetRecentMeaningfulBlocks(int maxBlocks, bool excludeInsightBlocks)
+        {
+            return Output
+                .Select(block => block.RawText)
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Where(text => !excludeInsightBlocks || !IsInsightBlock(text))
+                .Where(ContainsMeaningfulOperationalLine)
+                .TakeLast(maxBlocks)
+                .ToArray();
+        }
+
+        private static bool IsInsightBlock(string text)
+        {
+            var trimmed = (text ?? string.Empty).TrimStart();
+            if (trimmed.Length == 0)
+            {
+                return false;
+            }
+
+            return trimmed.StartsWith("Explain (", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith("Summary (", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith("Analyzing ", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith("Summarizing ", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool ContainsMeaningfulOperationalLine(string text)
+        {
+            var lines = (text ?? string.Empty)
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.Trim();
+                if (line.Length == 0)
+                {
+                    continue;
+                }
+
+                if (line.StartsWith("Command:", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("Type: help", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("Explain (", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("Summary (", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("[info] No output", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (line.Contains("The Generic Windows Security Tool", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("Type 'help' for available commands", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("Use ↑/↓ to navigate menu", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("See footer for complete keyboard shortcuts", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!line.Any(char.IsLetterOrDigit))
+                {
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         public async Task ExecuteSelectedMenuAsync()
@@ -239,13 +320,12 @@ namespace TGWST.App.ViewModels
 
         private void WriteBanner()
         {
-            AddOutput("╔═══════════════════════════════════════════════════════════════════════════╗\n");
-            AddOutput("║                  The Generic Windows Security Tool                        ║\n");
-            AddOutput("╠═══════════════════════════════════════════════════════════════════════════╣\n");
-            AddOutput("║ Type 'help' for available commands                                       ║\n");
-            AddOutput("║ Use ↑/↓ to navigate menu, → for details, ⏎ to execute                    ║\n");
-            AddOutput("║ See footer for complete keyboard shortcuts                               ║\n");
-            AddOutput("╚═══════════════════════════════════════════════════════════════════════════╝\n\n");
+            AddOutput("================================================================================\n");
+            AddOutput(" TGWST :: SECURITY OPERATIONS TERMINAL\n");
+            AddOutput("--------------------------------------------------------------------------------\n");
+            AddOutput(" [menu] click to select | double-click to execute | keyboard fully supported\n");
+            AddOutput(" [hint] use 'network board' for feature matrix and 'help' for all commands\n");
+            AddOutput("================================================================================\n\n");
         }
 
         private void BuildMenu()
@@ -469,6 +549,31 @@ namespace TGWST.App.ViewModels
                     }),
                     new MenuNode("Network", children: new[]
                     {
+                        new MenuNode("Feature Board", "network board", "BIOS-style checkboxes for all features",
+                            detail: null,
+                            richDetail: new DetailContent
+                            {
+                                Summary = "Shows green/red feature checkboxes and toggle commands in ASCII board style",
+                                Changes = new[] { "Read-only status checks - no system changes" },
+                                Risks = new string[] { }
+                            }),
+                        new MenuNode("Quick Start (Recommended)", "network quick", "Guided start for most users",
+                            detail: null,
+                            richDetail: new DetailContent
+                            {
+                                Summary = "Shows feature board, then launches the live network monitor",
+                                Changes = new[] { "Read-only checks, then starts monitoring pane" },
+                                Risks = new string[] { },
+                                RollbackInfo = "Press Ctrl+W to close the pane"
+                            }),
+                        new MenuNode("Setup / Preflight", "network setup", "Run full feature setup/status checks",
+                            detail: null,
+                            richDetail: new DetailContent
+                            {
+                                Summary = "Validate admin rights, Linux analytics, and Pi-hole feature readiness",
+                                Changes = new[] { "Read-only checks - no system changes" },
+                                Risks = new string[] { }
+                            }),
                         new MenuNode("Live Monitor", "network live", "Real-time TCP/UDP connections",
                             detail: null,
                             richDetail: new DetailContent
@@ -486,50 +591,32 @@ namespace TGWST.App.ViewModels
                                 Changes = new[] { "Read-only snapshot - no system changes" },
                                 Risks = new string[] { }
                             }),
+                        new MenuNode("Pi-hole Status", "network pihole status", "DNS filtering feature status",
+                            detail: null,
+                            richDetail: new DetailContent
+                            {
+                                Summary = "Check whether WSL Pi-hole is installed, active, and reachable",
+                                Changes = new[] { "Read-only checks - no system changes" },
+                                Risks = new string[] { }
+                            }),
+                        new MenuNode("Pi-hole Top Blocked", "network pihole top", "Top blocked domains telemetry",
+                            detail: null,
+                            richDetail: new DetailContent
+                            {
+                                Summary = "Show most frequently blocked domains from Pi-hole FTL statistics",
+                                Changes = new[] { "Read-only query - no system changes" },
+                                Risks = new string[] { }
+                            }),
+                        new MenuNode("Hybrid Status", "network hybrid status", "Linux-analysis feature status",
+                            detail: null,
+                            richDetail: new DetailContent
+                            {
+                                Summary = "Show Linux-analysis feature status and toggle state",
+                                Changes = new[] { "Read-only checks - no system changes" },
+                                Risks = new string[] { }
+                            }),
                         new MenuNode("Signature Check", "scan sdk sigcheck", "Verify signatures on a target path",
                             "Uses signtool if available; otherwise falls back to Authenticode checks.")
-                    }),
-                    new MenuNode("Compliance", children: new[]
-                    {
-                        new MenuNode("Snapshot", "compliance snapshot", "Capture compliance drift snapshot",
-                            detail: null,
-                            richDetail: new DetailContent
-                            {
-                                Summary = "Compare system state against imported baseline",
-                                Changes = new[]
-                                {
-                                    "Read registry values specified in baseline",
-                                    "Compare current values to expected values",
-                                    "Generate compliance report"
-                                },
-                                Risks = new[]
-                                {
-                                    "Read-only operation - no system changes",
-                                    "May take time on large baselines"
-                                }
-                            })
-                    }),
-                    new MenuNode("Uninstall", children: new[]
-                    {
-                        new MenuNode("Uninstall + Remnants", "uninstall remnants", "Remove apps and scan leftovers",
-                            detail: null,
-                            richDetail: new DetailContent
-                            {
-                                Summary = "Run uninstaller for selected app, then scan for leftover files and registry keys",
-                                Changes = new[]
-                                {
-                                    "Execute application's official uninstaller",
-                                    "Scan %AppData%, %LocalAppData%, %ProgramData% for remnants",
-                                    "Scan registry for orphaned keys (optional removal)"
-                                },
-                                Risks = new[]
-                                {
-                                    "Uninstaller behavior depends on the application",
-                                    "Leftover removal is irreversible",
-                                    "Review leftovers before using --remove flag"
-                                },
-                                RollbackInfo = "No automatic rollback - create system restore point first"
-                            })
                     })
                 });
 
@@ -809,8 +896,8 @@ namespace TGWST.App.ViewModels
         private void UpdatePromptPrefix(bool isAdmin)
         {
             PromptPrefix = isAdmin
-                ? $"▶ tgwst [Administrator] {DefaultStatus} │"
-                : $"▶ tgwst {DefaultStatus} │";
+                ? $"(tgwst:admin {DefaultStatus}) >"
+                : $"(tgwst {DefaultStatus}) >";
         }
     }
 

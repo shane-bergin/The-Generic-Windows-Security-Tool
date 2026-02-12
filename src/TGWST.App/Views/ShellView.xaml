@@ -1,451 +1,573 @@
 <Window x:Class="TGWST.App.Views.ShellView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="TGWST - The Generic Windows Security Tool"
-        Background="#0B0D11"
-        Width="1200"
-        Height="760"
-        MinWidth="980"
-        MinHeight="640"
-        FontFamily="Cascadia Code, Cascadia Mono, Consolas"
+        Title="TGWST - Security Terminal"
+        Icon="/Assets/generic_windows_security_tool_icon.png"
+        Width="1280"
+        Height="820"
+        MinWidth="1024"
+        MinHeight="680"
+        Background="#1A1F2B"
+        FontFamily="Cascadia Mono, Consolas"
         WindowStartupLocation="CenterScreen"
-        TextOptions.TextFormattingMode="Display"
-        TextOptions.TextRenderingMode="ClearType"
-        TextOptions.TextHintingMode="Fixed"
         SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Aliased"
+        TextOptions.TextHintingMode="Fixed"
         KeyDown="OnKeyDown">
     <Window.Resources>
-        <!-- Color Palette: Enhanced Modern Terminal Theme -->
-        <SolidColorBrush x:Key="AppBackground" Color="#0A0E14" />
-        <SolidColorBrush x:Key="PanelBackground" Color="#0D1117" />
-        <SolidColorBrush x:Key="CardBackground" Color="#161B22" />
-        <SolidColorBrush x:Key="Accent" Color="#58A6FF" />
-        <SolidColorBrush x:Key="AccentBright" Color="#79C0FF" />
-        <SolidColorBrush x:Key="AccentDim" Color="#388BFD" />
-        <SolidColorBrush x:Key="AcronymExpanded" Color="#D2A8FF" />
-        <SolidColorBrush x:Key="TextPrimary" Color="#E6EDF3" />
-        <SolidColorBrush x:Key="TextSecondary" Color="#C9D1D9" />
-        <SolidColorBrush x:Key="TextMuted" Color="#8B949E" />
-        <SolidColorBrush x:Key="TextDim" Color="#6E7681" />
-        <SolidColorBrush x:Key="Line" Color="#21262D" />
-        <SolidColorBrush x:Key="LineBright" Color="#30363D" />
-        <SolidColorBrush x:Key="SelectionBackground" Color="#1C2128" />
-        <SolidColorBrush x:Key="SelectionBorder" Color="#58A6FF" />
-        <SolidColorBrush x:Key="LiveStatus" Color="#3FB950" />
-        <SolidColorBrush x:Key="PausedStatus" Color="#D29922" />
-        <SolidColorBrush x:Key="ErrorStatus" Color="#F85149" />
-        <SolidColorBrush x:Key="Success" Color="#3FB950" />
-        <SolidColorBrush x:Key="Warning" Color="#D29922" />
-        <SolidColorBrush x:Key="Info" Color="#58A6FF" />
-        <SolidColorBrush x:Key="Caret" Color="#D29922" />
+        <SolidColorBrush x:Key="Bg" Color="#1A1F2B" />
+        <SolidColorBrush x:Key="Panel" Color="#21293A" />
+        <SolidColorBrush x:Key="Panel2" Color="#1D2535" />
+        <SolidColorBrush x:Key="Line" Color="#3C4C68" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#DEE7F6" />
+        <SolidColorBrush x:Key="TextMuted" Color="#94A4C1" />
+        <SolidColorBrush x:Key="Green" Color="#8ED26D" />
+        <SolidColorBrush x:Key="Amber" Color="#D9BA70" />
+        <SolidColorBrush x:Key="Red" Color="#E16E74" />
+        <SolidColorBrush x:Key="Blue" Color="#64A7E2" />
+        <SolidColorBrush x:Key="Cyan" Color="#7EC7FF" />
+        <SolidColorBrush x:Key="Magenta" Color="#A89AE0" />
+        <SolidColorBrush x:Key="Caret" Color="#7EC7FF" />
+
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <Style x:Key="QuickActionButtonStyle" TargetType="Button">
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+            <Setter Property="Background" Value="#27324A" />
+            <Setter Property="BorderBrush" Value="#4A5B79" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#30405B" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#86B6E8" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#24334A" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="QuickMenuComboStyle" TargetType="ComboBox">
+            <Setter Property="Width" Value="188" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+            <Setter Property="Background" Value="#27324A" />
+            <Setter Property="BorderBrush" Value="#4A5B79" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Padding" Value="4,1" />
+        </Style>
+
+        <Style x:Key="QuickMenuItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+            <Setter Property="Background" Value="#27324A" />
+        </Style>
+
         <Style x:Key="PaneStatusStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Status}" Value="Live">
-                    <Setter Property="Foreground" Value="{StaticResource LiveStatus}" />
+                    <Setter Property="Foreground" Value="{StaticResource Green}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Running...">
-                    <Setter Property="Foreground" Value="{StaticResource LiveStatus}" />
+                    <Setter Property="Foreground" Value="{StaticResource Green}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Starting">
-                    <Setter Property="Foreground" Value="{StaticResource LiveStatus}" />
+                    <Setter Property="Foreground" Value="{StaticResource Green}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Monitoring...">
-                    <Setter Property="Foreground" Value="{StaticResource LiveStatus}" />
+                    <Setter Property="Foreground" Value="{StaticResource Green}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Paused">
-                    <Setter Property="Foreground" Value="{StaticResource PausedStatus}" />
+                    <Setter Property="Foreground" Value="{StaticResource Amber}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Stopped">
-                    <Setter Property="Foreground" Value="{StaticResource PausedStatus}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="Closed">
-                    <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                    <Setter Property="Foreground" Value="{StaticResource Amber}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Failed">
-                    <Setter Property="Foreground" Value="{StaticResource ErrorStatus}" />
+                    <Setter Property="Foreground" Value="{StaticResource Red}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Error">
-                    <Setter Property="Foreground" Value="{StaticResource ErrorStatus}" />
+                    <Setter Property="Foreground" Value="{StaticResource Red}" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </Window.Resources>
 
-    <Grid Margin="20,16" Background="{StaticResource AppBackground}">
+    <Grid Margin="8" Background="{StaticResource Bg}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header with breadcrumb -->
-        <Border Grid.Row="0" Margin="0,0,0,16" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,0,0,12">
+        <Border Grid.Row="0"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="1"
+                Background="{StaticResource Panel}"
+                Padding="8,5">
             <DockPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="╔═╗" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <TextBlock Text="TGWST" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
-                    <TextBlock Text="│" FontSize="14" Foreground="{StaticResource Line}" VerticalAlignment="Center" Margin="12,0" />
-                    <TextBlock Text="{Binding BreadcrumbPath}" FontSize="13" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                <StackPanel DockPanel.Dock="Left">
+                    <DockPanel LastChildFill="True">
+                        <Border Width="46"
+                                Height="46"
+                                Margin="0,0,8,0"
+                                BorderBrush="#4F6483"
+                                BorderThickness="1"
+                                Background="#243249">
+                            <Image Source="/Assets/TGWST.png"
+                                   Stretch="Uniform" />
+                        </Border>
+                        <StackPanel>
+                            <TextBlock FontSize="10" Foreground="{StaticResource Cyan}" xml:space="preserve"
+                                       Text="┌─ THE GENERIC WINDOWS SECURITY TOOL ─────────────────────────────────────────────────────────┐" />
+                            <TextBlock FontSize="10" Foreground="{StaticResource Blue}" xml:space="preserve"
+                                       Text="│ security terminal | pipelines: windows11(native) + wsl2(ubuntu/bash) | mode: administrator │" />
+                            <TextBlock FontSize="10" Foreground="{StaticResource Cyan}" xml:space="preserve"
+                                       Text="└───────────────────────────────────────────────────────────────────────────────────────────────┘" />
+                        </StackPanel>
+                    </DockPanel>
                 </StackPanel>
+
+                <TextBlock DockPanel.Dock="Right"
+                           VerticalAlignment="Bottom"
+                           FontSize="10"
+                           Foreground="{StaticResource TextMuted}"
+                           Text="{Binding BreadcrumbPath, StringFormat='path : {0}'}" />
             </DockPanel>
         </Border>
 
-        <!-- Quick menu -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,12">
-            <ItemsControl ItemsSource="{Binding MenuEntries}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                    <Border x:Name="MenuRow"
-                            Background="Transparent"
-                            CornerRadius="6"
-                            Padding="10,8"
-                            Margin="0,0,0,4"
-                            BorderBrush="Transparent"
-                            BorderThickness="0,0,0,0"
-                            MouseLeftButtonDown="OnMenuItemClick">
-                        <StackPanel>
-                                <!-- Main row: marker, index, title, subtitle, detail hint -->
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock x:Name="MenuMarker"
-                                               Text="  "
-                                               Width="18"
-                                               FontSize="14"
-                                               FontWeight="Bold"
-                                               Foreground="{StaticResource TextMuted}"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock x:Name="MenuIndex"
-                                               Text="{Binding IndexLabel}"
-                                               Width="28"
-                                               FontSize="13"
-                                               FontWeight="Medium"
-                                               Foreground="{StaticResource TextDim}"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock x:Name="MenuTitle"
-                                               Text="{Binding Title}"
-                                               FontSize="14"
-                                               Foreground="{StaticResource TextPrimary}"
-                                               FontWeight="SemiBold"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock x:Name="SubtitleSep"
-                                               Text=" ─ "
-                                               FontSize="13"
-                                               Foreground="{StaticResource TextDim}"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock x:Name="MenuSubtitle"
-                                               Text="{Binding Subtitle}"
-                                               FontSize="13"
-                                               Foreground="{StaticResource TextMuted}"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock x:Name="DetailHint"
-                                               Text=" ›"
-                                               FontSize="14"
-                                               FontWeight="Bold"
-                                               Foreground="{StaticResource Accent}"
-                                               VerticalAlignment="Center"
-                                               Margin="6,0,0,0"
-                                               Visibility="Collapsed" />
-                                </StackPanel>
-
-                                <!-- Legacy detail (for items without RichDetail) -->
-                                <TextBlock x:Name="MenuDetail"
-                                           Text="{Binding Detail}"
-                                           TextWrapping="Wrap"
-                                           FontSize="12"
-                                           Foreground="{StaticResource TextSecondary}"
-                                           Margin="46,6,0,0"
-                                           LineHeight="18"
-                                           Visibility="Collapsed" />
-
-                                <!-- Level 1: Summary (RichDetail.Summary) -->
-                                <TextBlock x:Name="SummaryLine"
-                                           Text="{Binding RichDetail.Summary}"
-                                           TextWrapping="Wrap"
-                                           FontSize="12"
-                                           LineHeight="18"
-                                           Foreground="{StaticResource TextSecondary}"
-                                           Margin="46,6,0,0"
-                                           Visibility="Collapsed" />
-
-                                <!-- Level 2: Full detail expansion -->
-                                <Border x:Name="FullDetail"
-                                        Margin="46,8,0,0"
-                                        Padding="12,10"
-                                        Background="{StaticResource CardBackground}"
-                                        BorderBrush="{StaticResource Line}"
-                                        BorderThickness="1"
-                                        CornerRadius="4"
-                                        Visibility="Collapsed">
-                                    <StackPanel>
-                                        <!-- Changes section -->
-                                        <StackPanel x:Name="ChangesSection" Margin="0,0,0,10">
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                <TextBlock Text="✓" Foreground="{StaticResource Success}" FontSize="12" Margin="0,0,6,0" />
-                                                <TextBlock Text="Changes" Foreground="{StaticResource Success}" FontSize="12" FontWeight="SemiBold" />
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding ChangesDisplay}"
-                                                       Foreground="{StaticResource TextSecondary}"
-                                                       FontSize="11"
-                                                       LineHeight="17"
-                                                       Margin="18,0,0,0"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <!-- Risks section -->
-                                        <StackPanel x:Name="RisksSection" Margin="0,0,0,10">
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                <TextBlock Text="⚠" Foreground="{StaticResource Warning}" FontSize="12" Margin="0,0,6,0" />
-                                                <TextBlock Text="Risks" Foreground="{StaticResource Warning}" FontSize="12" FontWeight="SemiBold" />
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding RisksDisplay}"
-                                                       Foreground="{StaticResource TextSecondary}"
-                                                       FontSize="11"
-                                                       LineHeight="17"
-                                                       Margin="18,0,0,0"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <!-- Rollback info -->
-                                        <StackPanel x:Name="RollbackSection" Margin="0,0,0,6">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="↶" Foreground="{StaticResource Info}" FontSize="12" Margin="0,0,6,0" />
-                                                <TextBlock x:Name="RollbackLine"
-                                                           FontSize="11"
-                                                           Foreground="{StaticResource TextMuted}"
-                                                           Text="{Binding RichDetail.RollbackInfo, StringFormat='Rollback: {0}'}" />
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <!-- Prerequisites -->
-                                        <StackPanel x:Name="PrereqSection">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="ℹ" Foreground="{StaticResource Info}" FontSize="12" Margin="0,0,6,0" />
-                                                <TextBlock x:Name="PrereqLine"
-                                                           FontSize="11"
-                                                           LineHeight="17"
-                                                           Foreground="{StaticResource TextMuted}"
-                                                           TextWrapping="Wrap"
-                                                           Text="{Binding RichDetail.Prerequisites, StringFormat='Note: {0}'}" />
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-                        <DataTemplate.Triggers>
-                            <!-- Selected state -->
-                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                <Setter TargetName="MenuMarker" Property="Text" Value="▶" />
-                                <Setter TargetName="MenuMarker" Property="Foreground" Value="{StaticResource Accent}" />
-                                <Setter TargetName="MenuIndex" Property="Foreground" Value="{StaticResource AccentBright}" />
-                                <Setter TargetName="MenuTitle" Property="Foreground" Value="{StaticResource AccentBright}" />
-                                <Setter TargetName="MenuRow" Property="Background" Value="{StaticResource SelectionBackground}" />
-                                <Setter TargetName="MenuRow" Property="BorderBrush" Value="{StaticResource SelectionBorder}" />
-                                <Setter TargetName="MenuRow" Property="BorderThickness" Value="3,0,0,0" />
-                            </DataTrigger>
-                            <!-- Show detail hint for items with any detail -->
-                            <DataTrigger Binding="{Binding HasAnyDetail}" Value="True">
-                                <Setter TargetName="DetailHint" Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                            <!-- Hide subtitle separator and hint when expanded -->
-                            <DataTrigger Binding="{Binding ShowSummary}" Value="True">
-                                <Setter TargetName="SubtitleSep" Property="Visibility" Value="Collapsed" />
-                                <Setter TargetName="MenuSubtitle" Property="Visibility" Value="Collapsed" />
-                                <Setter TargetName="DetailHint" Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                            <!-- Legacy detail display (no RichDetail) -->
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding ShowSummary}" Value="True" />
-                                    <Condition Binding="{Binding HasRichDetail}" Value="False" />
-                                </MultiDataTrigger.Conditions>
-                                <Setter TargetName="MenuDetail" Property="Visibility" Value="Visible" />
-                            </MultiDataTrigger>
-                            <!-- Level 1: Summary visible (RichDetail) -->
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding ShowSummary}" Value="True" />
-                                    <Condition Binding="{Binding HasRichDetail}" Value="True" />
-                                </MultiDataTrigger.Conditions>
-                                <Setter TargetName="SummaryLine" Property="Visibility" Value="Visible" />
-                            </MultiDataTrigger>
-                            <!-- Level 2: Full detail visible -->
-                            <DataTrigger Binding="{Binding ShowFullDetail}" Value="True">
-                                <Setter TargetName="FullDetail" Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                            <!-- Hide sections with empty content -->
-                            <DataTrigger Binding="{Binding ChangesDisplay}" Value="">
-                                <Setter TargetName="ChangesSection" Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RisksDisplay}" Value="">
-                                <Setter TargetName="RisksSection" Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RichDetail.RollbackInfo}" Value="{x:Null}">
-                                <Setter TargetName="RollbackSection" Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RichDetail.Prerequisites}" Value="{x:Null}">
-                                <Setter TargetName="PrereqSection" Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </DataTemplate.Triggers>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-
-        <!-- Output scrollback -->
-        <Border Grid.Row="2"
-                Background="{StaticResource PanelBackground}"
+        <Border Grid.Row="1"
+                Margin="0,6,0,6"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="1"
-                CornerRadius="6"
-                Padding="16,12"
-                Margin="0,0,0,12">
-            <ScrollViewer x:Name="OutputScroll"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled"
-                          CanContentScroll="True"
-                          IsDeferredScrollingEnabled="True"
-                          Loaded="OnOutputScrollLoaded"
-                          Unloaded="OnOutputScrollUnloaded">
-                <ItemsControl ItemsSource="{Binding Output}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Margin="0,0,0,10"
-                                       FontSize="13"
-                                       LineHeight="20"
-                                       Foreground="{StaticResource TextPrimary}"
-                                       TextWrapping="Wrap"
-                                       xml:space="preserve"
-                                       Text="{Binding DisplayText}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsAcronymsExpanded}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource AcronymExpanded}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                Background="{StaticResource Panel2}"
+                Padding="8,4">
+            <DockPanel LastChildFill="True">
+                <TextBlock DockPanel.Dock="Left"
+                           Margin="0,0,10,0"
+                           VerticalAlignment="Center"
+                           FontSize="10"
+                           Foreground="{StaticResource Green}"
+                           Text="[ACTIONS]" />
+
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Margin="0,0,6,0"
+                               VerticalAlignment="Center"
+                               FontSize="10"
+                               Foreground="{StaticResource Blue}"
+                               Text="[VIEWS/TOOLS]" />
+
+                    <ComboBox x:Name="ViewsMenu"
+                              Style="{StaticResource QuickMenuComboStyle}"
+                              SelectedIndex="0"
+                              SelectionChanged="OnQuickMenuSelectionChanged">
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Content="[VIEWS]" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__open_bootstrap_wizard" Content="Bootstrap Wizard" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__open_wsl_credentials" Content="WSL Credentials" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__open_connections" Content="Connections Window" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__focus_pane" Content="Focus Attached Pane" />
+                    </ComboBox>
+
+                    <ComboBox x:Name="ToolsMenu"
+                              Style="{StaticResource QuickMenuComboStyle}"
+                              SelectedIndex="0"
+                              SelectionChanged="OnQuickMenuSelectionChanged">
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Content="[TOOLS]" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__open_network_ops" Content="Network Operations Window" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__explain_last" Content="Explain Last Output (F3)" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__summarize_output" Content="Summarize Output (F4)" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="network board" Content="Network Feature Board" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="network setup" Content="Network Setup Check" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="network live" Content="Open Live Monitor Pane" />
+                    </ComboBox>
+                </StackPanel>
+
+                <WrapPanel VerticalAlignment="Center">
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="__open_network_ops" Content="STATUS" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="__open_bootstrap_wizard" Content="SETUP" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network quick" Content="QUICK" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network live" Content="LIVE" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network feature enable hybrid" Content="HYBRID ON" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network feature disable hybrid" Content="HYBRID OFF" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network pihole status" Content="PIHOLE" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network pihole top" Content="TOP-BLOCK" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="__open_wsl_credentials" Content="WSL-CREDS" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="help" Content="HELP" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="clear" Content="CLEAR" />
+                </WrapPanel>
+            </DockPanel>
         </Border>
 
-        <!-- Attached pane (tmux-style) -->
-        <ContentControl Grid.Row="3"
-                        Content="{Binding AttachedPane}"
-                        Visibility="{Binding IsAttachedPaneVisible, Converter={StaticResource BoolToVisibility}}">
-            <ContentControl.ContentTemplate>
-                <DataTemplate>
-                    <Border BorderBrush="{StaticResource LineBright}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Background="{StaticResource CardBackground}"
-                            Padding="16,12"
-                            Margin="0,0,0,12">
-                        <StackPanel>
-                            <!-- Pane header -->
-                            <Border BorderBrush="{StaticResource Line}"
-                                    BorderThickness="0,0,0,1"
-                                    Padding="0,0,0,8"
-                                    Margin="0,0,0,10">
-                                <DockPanel>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="◆" FontSize="13" Foreground="{StaticResource Accent}" Margin="0,0,8,0" />
-                                        <TextBlock Text="{Binding Title}"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{StaticResource TextPrimary}" />
-                                    </StackPanel>
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                        <TextBlock Text="●"
-                                                   FontSize="11"
-                                                   Margin="0,0,6,0"
-                                                   Style="{StaticResource PaneStatusStyle}" />
-                                        <TextBlock Text="{Binding Status}"
-                                                   FontSize="12"
-                                                   FontWeight="Medium"
-                                                   Style="{StaticResource PaneStatusStyle}" />
-                                    </StackPanel>
-                                </DockPanel>
-                            </Border>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="278" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-                            <!-- Close prompt -->
-                            <Border Background="{StaticResource SelectionBackground}"
-                                    BorderBrush="{StaticResource Info}"
-                                    BorderThickness="2,0,0,0"
-                                    Padding="10,6"
-                                    Margin="0,0,0,10"
-                                    CornerRadius="3"
-                                    Visibility="{Binding DataContext.IsAttachedPaneClosePromptVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="ℹ" FontSize="12" Foreground="{StaticResource Info}" Margin="0,0,8,0" />
-                                    <TextBlock Text="{Binding DataContext.AttachedPaneClosePrompt, RelativeSource={RelativeSource AncestorType=Window}}"
-                                               FontSize="12"
-                                               Foreground="{StaticResource Info}" />
+            <Border Grid.Column="0"
+                    Margin="0,0,6,0"
+                    BorderBrush="{StaticResource Line}"
+                    BorderThickness="1"
+                    Background="{StaticResource Panel}"
+                    Padding="8,6">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                               Margin="0,0,0,4"
+                               FontSize="10"
+                               Foreground="{StaticResource Blue}"
+                               Text="[MODULE NAV] click to select, double-click to execute" />
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding MenuEntries}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="MenuRow"
+                                            Margin="0,0,0,2"
+                                            Padding="6,3"
+                                            Background="Transparent"
+                                            BorderBrush="Transparent"
+                                            BorderThickness="1"
+                                            MouseLeftButtonDown="OnMenuItemClick">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock x:Name="MenuMarker" Width="18" FontSize="10" Foreground="{StaticResource TextMuted}" Text="[ ]" />
+                                                <TextBlock Width="24" FontSize="10" Foreground="{StaticResource TextMuted}" Text="{Binding IndexLabel}" />
+                                                <TextBlock x:Name="MenuTitle" FontSize="10" Foreground="{StaticResource TextPrimary}" Text="{Binding Title}" />
+                                            </StackPanel>
+                                            <TextBlock Margin="42,1,0,0"
+                                                       FontSize="9"
+                                                       Foreground="{StaticResource TextMuted}"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding Subtitle}" />
+                                            <TextBlock x:Name="SummaryLine"
+                                                       Margin="42,1,0,0"
+                                                       FontSize="9"
+                                                       Foreground="{StaticResource Magenta}"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="Collapsed"
+                                                       Text="{Binding RichDetail.Summary}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter TargetName="MenuRow" Property="Background" Value="#2A3851" />
+                                            <Setter TargetName="MenuRow" Property="BorderBrush" Value="#84B8F1" />
+                                            <Setter TargetName="MenuMarker" Property="Text" Value="[>]" />
+                                            <Setter TargetName="MenuMarker" Property="Foreground" Value="{StaticResource Green}" />
+                                            <Setter TargetName="MenuTitle" Property="Foreground" Value="{StaticResource Cyan}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ShowSummary}" Value="True">
+                                            <Setter TargetName="SummaryLine" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        BorderBrush="{StaticResource Line}"
+                        BorderThickness="1"
+                        Background="{StaticResource Panel}"
+                        Padding="6,4">
+                    <ScrollViewer x:Name="OutputScroll"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  CanContentScroll="True"
+                                  IsDeferredScrollingEnabled="True"
+                                  Loaded="OnOutputScrollLoaded"
+                                  Unloaded="OnOutputScrollUnloaded">
+                        <ItemsControl ItemsSource="{Binding Output}"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                      ScrollViewer.CanContentScroll="True">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,0,0,0"
+                                               FontSize="10"
+                                               LineHeight="10.5"
+                                               Foreground="{StaticResource TextPrimary}"
+                                               TextWrapping="Wrap"
+                                               xml:space="preserve"
+                                               Text="{Binding DisplayText}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ColorTag}" Value="success">
+                                                        <Setter Property="Foreground" Value="{StaticResource Green}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ColorTag}" Value="error">
+                                                        <Setter Property="Foreground" Value="{StaticResource Red}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ColorTag}" Value="warning">
+                                                        <Setter Property="Foreground" Value="{StaticResource Amber}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ColorTag}" Value="info">
+                                                        <Setter Property="Foreground" Value="{StaticResource Blue}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ColorTag}" Value="accent">
+                                                        <Setter Property="Foreground" Value="{StaticResource Cyan}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsAcronymsExpanded}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource Magenta}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <ContentControl Grid.Row="1"
+                                Margin="0,6,0,0"
+                                Content="{Binding AttachedPane}"
+                                Visibility="{Binding IsAttachedPaneVisible, Converter={StaticResource BoolToVisibility}}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1"
+                                    Background="{StaticResource Panel2}"
+                                    Padding="6,4">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,4">
+                                        <TextBlock DockPanel.Dock="Left" FontSize="10" Foreground="{StaticResource Blue}" Text="[ATTACHED PANE] " />
+                                        <TextBlock DockPanel.Dock="Left" FontSize="10" Foreground="{StaticResource TextPrimary}" Text="{Binding Title}" />
+                                        <TextBlock DockPanel.Dock="Right" FontSize="10" Style="{StaticResource PaneStatusStyle}" Text="{Binding Status}" />
+                                    </DockPanel>
+
+                                    <Border Margin="0,0,0,4"
+                                            Padding="6,2"
+                                            Background="#263850"
+                                            BorderBrush="#4B6180"
+                                            BorderThickness="1"
+                                            Visibility="{Binding DataContext.IsAttachedPaneClosePromptVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock FontSize="9"
+                                                   Foreground="{StaticResource Cyan}"
+                                                   Text="{Binding DataContext.AttachedPaneClosePrompt, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </Border>
+
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  MaxHeight="170"
+                                                  CanContentScroll="True"
+                                                  IsDeferredScrollingEnabled="True"
+                                                  Focusable="True"
+                                                  Loaded="OnAttachedScrollLoaded"
+                                                  Unloaded="OnAttachedScrollUnloaded">
+                                        <ItemsControl ItemsSource="{Binding Output}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Margin="0,0,0,0"
+                                                               FontSize="10"
+                                                               LineHeight="10.5"
+                                                               Foreground="{StaticResource TextPrimary}"
+                                                               TextWrapping="Wrap"
+                                                               xml:space="preserve"
+                                                               Text="{Binding DisplayText}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <Border Margin="0,4,0,0"
+                                            Padding="4,3"
+                                            Background="#1A2232"
+                                            BorderBrush="#3F5472"
+                                            BorderThickness="1"
+                                            Visibility="{Binding HasInteractiveEndpoints, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel>
+                                            <DockPanel Margin="0,0,0,3" LastChildFill="False">
+                                                <TextBlock DockPanel.Dock="Left"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="9"
+                                                           Foreground="{StaticResource Cyan}"
+                                                           Text="[ENDPOINT FOCUS] click to select, double-click or Inspect for details" />
+                                                <Border DockPanel.Dock="Right"
+                                                        Padding="4,1"
+                                                        Background="#243249"
+                                                        BorderBrush="#4F6483"
+                                                        BorderThickness="1">
+                                                    <TextBox Width="210"
+                                                             FontSize="9"
+                                                             Foreground="{StaticResource TextPrimary}"
+                                                             Background="Transparent"
+                                                             BorderThickness="0"
+                                                             CaretBrush="{StaticResource Cyan}"
+                                                             Text="{Binding EndpointFilter, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="Filter: process / ip / host / pid" />
+                                                </Border>
+                                            </DockPanel>
+
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                          HorizontalScrollBarVisibility="Disabled"
+                                                          MaxHeight="120">
+                                                <ItemsControl ItemsSource="{Binding InteractiveEndpoints}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,0,0,2"
+                                                                    Padding="4,2"
+                                                                    BorderBrush="#4F6483"
+                                                                    BorderThickness="1"
+                                                                    Cursor="Hand"
+                                                                    MouseLeftButtonDown="OnEndpointRowClick">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="#243249" />
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter Property="Background" Value="#2D3F59" />
+                                                                                <Setter Property="BorderBrush" Value="#82B7EF" />
+                                                                            </Trigger>
+                                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                                <Setter Property="Background" Value="#304767" />
+                                                                                <Setter Property="BorderBrush" Value="#9AD1FF" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <StackPanel>
+                                                                    <DockPanel LastChildFill="False">
+                                                                        <TextBlock FontSize="10"
+                                                                                   Foreground="{StaticResource TextPrimary}"
+                                                                                   Text="{Binding EndpointDisplay}" />
+
+                                                                        <TextBlock DockPanel.Dock="Right"
+                                                                                   Margin="6,0,0,0"
+                                                                                   FontSize="9"
+                                                                                   Foreground="{StaticResource Blue}"
+                                                                                   Text="{Binding TotalBytesDisplay}" />
+
+                                                                        <Border DockPanel.Dock="Right"
+                                                                                Margin="6,0,0,0"
+                                                                                Padding="4,0"
+                                                                                BorderBrush="#2B344A"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="2">
+                                                                            <Border.Style>
+                                                                                <Style TargetType="Border">
+                                                                                    <Setter Property="Background" Value="#354766" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding RiskTag}" Value="high">
+                                                                                            <Setter Property="Background" Value="#7B2D39" />
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding RiskTag}" Value="med">
+                                                                                            <Setter Property="Background" Value="#7A5A2E" />
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding RiskTag}" Value="low">
+                                                                                            <Setter Property="Background" Value="#2E6548" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Border.Style>
+                                                                            <TextBlock FontSize="9"
+                                                                                       Foreground="{StaticResource TextPrimary}"
+                                                                                       Text="{Binding RiskToken}" />
+                                                                        </Border>
+                                                                    </DockPanel>
+
+                                                                    <TextBlock Margin="0,1,0,0"
+                                                                               FontSize="9"
+                                                                               Foreground="{StaticResource TextMuted}"
+                                                                               Text="{Binding EndpointSubline}" />
+
+                                                                    <DockPanel Margin="0,1,0,0" LastChildFill="False">
+                                                                        <TextBlock DockPanel.Dock="Left"
+                                                                                   FontSize="8"
+                                                                                   Foreground="{StaticResource Green}"
+                                                                                   Text="{Binding ThroughputSparkline}" />
+                                                                        <Button DockPanel.Dock="Right"
+                                                                                Margin="4,0,0,0"
+                                                                                Padding="4,0"
+                                                                                FontSize="8"
+                                                                                Content="Whois"
+                                                                                Click="OnEndpointWhoisClick" />
+                                                                        <Button DockPanel.Dock="Right"
+                                                                                Margin="4,0,0,0"
+                                                                                Padding="4,0"
+                                                                                FontSize="8"
+                                                                                Content="Copy IP"
+                                                                                Click="OnEndpointCopyIpClick" />
+                                                                        <Button DockPanel.Dock="Right"
+                                                                                Margin="4,0,0,0"
+                                                                                Padding="4,0"
+                                                                                FontSize="8"
+                                                                                Content="Inspect"
+                                                                                Click="OnEndpointInspectClick" />
+                                                                    </DockPanel>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+            </Grid>
+        </Grid>
 
-                            <!-- Pane content -->
-                            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          MaxHeight="300"
-                                          CanContentScroll="True"
-                                          IsDeferredScrollingEnabled="True"
-                                          Focusable="True"
-                                          Loaded="OnAttachedScrollLoaded"
-                                          Unloaded="OnAttachedScrollUnloaded">
-                                <ItemsControl ItemsSource="{Binding Output}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Margin="0,0,0,8"
-                                                       FontSize="12"
-                                                       LineHeight="18"
-                                                       TextWrapping="Wrap"
-                                                       xml:space="preserve"
-                                                       Text="{Binding DisplayText}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsAcronymsExpanded}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource AcronymExpanded}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ContentControl.ContentTemplate>
-        </ContentControl>
-
-        <!-- Prompt line -->
-        <Border Grid.Row="4"
-                BorderBrush="{StaticResource LineBright}"
+        <Border Grid.Row="3"
+                Margin="0,6,0,0"
+                BorderBrush="{StaticResource Line}"
                 BorderThickness="1"
-                CornerRadius="6"
-                Background="{StaticResource PanelBackground}"
-                Padding="14,10">
+                Background="{StaticResource Panel2}"
+                Padding="6,3">
             <DockPanel LastChildFill="True">
                 <TextBlock Text="{Binding PromptPrefix}"
-                           FontSize="13"
-                           FontWeight="Medium"
-                           Foreground="{StaticResource Accent}"
-                           Margin="0,0,10,0"
+                           Margin="0,0,7,0"
+                           Foreground="{StaticResource Green}"
+                           FontSize="10"
                            VerticalAlignment="Center" />
                 <TextBox x:Name="CommandInput"
                          Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="13"
+                         FontSize="11"
                          Foreground="{StaticResource TextPrimary}"
                          Background="Transparent"
                          BorderThickness="0"
@@ -455,19 +577,16 @@
             </DockPanel>
         </Border>
 
-        <!-- Footer hints -->
-        <Border Grid.Row="5"
-                Margin="0,10,0,0"
-                Padding="12,8"
-                Background="{StaticResource CardBackground}"
+        <Border Grid.Row="4"
+                Margin="0,6,0,0"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="1"
-                CornerRadius="4">
-            <TextBlock FontSize="10"
-                       LineHeight="15"
+                Background="{StaticResource Panel}"
+                Padding="6,3">
+            <TextBlock FontSize="9"
                        Foreground="{StaticResource TextMuted}"
-                       Text="{Binding FooterHints}"
-                       TextWrapping="Wrap" />
+                       TextWrapping="Wrap"
+                       Text="{Binding FooterHints}" />
         </Border>
     </Grid>
 </Window>

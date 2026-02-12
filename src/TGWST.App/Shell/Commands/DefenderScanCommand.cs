@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using TGWST.App.ViewModels;
 using TGWST.Core.Hardening;
 using Microsoft.Win32;
@@ -52,19 +53,27 @@ namespace TGWST.App.Shell.Commands
                     return;
                 }
 
-                var progressVm = _outputService.CreateAndShow($"Windows Defender - {scanArg}", vm.AcronymsExpanded);
+                var session = _outputService.CreateSession($"Windows Defender - {scanArg}", vm.AcronymsExpanded);
+                var progressVm = session.ViewModel;
                 progressVm.Append($"Starting {scanArg}...\n");
 
                 try
                 {
-                    var script = $"Start-MpScan -ScanType {scanArg}; Get-MpComputerStatus | Select-Object AMServiceEnabled,AntispywareEnabled,AntivirusEnabled,QuickScanEndTime,FullScanEndTime | Format-List";
+                    var script = BuildDefenderScanScript(scanArg);
+                    var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
                     var exitCode = await ProcessRunner.RunAsync(
                         "powershell.exe",
-                        $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
-                        progressVm.Append);
+                        $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}",
+                        progressVm.Append,
+                        session.Cancellation.Token);
                     progressVm.Append($"Exit code: {exitCode}\n");
                     progressVm.Status = exitCode == 0 ? "Completed" : "Failed";
                     progressVm.Append(exitCode == 0 ? "Scan completed.\n" : "Scan completed with errors.\n");
+                }
+                catch (OperationCanceledException)
+                {
+                    progressVm.Status = "Canceled";
+                    progressVm.Append("Scan canceled by user.\n");
                 }
                 catch (Exception ex)
                 {
@@ -211,6 +220,87 @@ namespace TGWST.App.Shell.Commands
             }
 
             return null;
+        }
+
+        private static string BuildDefenderScanScript(string scanArg)
+        {
+            var maxMinutes = string.Equals(scanArg, "FullScan", StringComparison.OrdinalIgnoreCase) ? 240 : 40;
+            var statusField = string.Equals(scanArg, "FullScan", StringComparison.OrdinalIgnoreCase)
+                ? "FullScanEndTime"
+                : "QuickScanEndTime";
+
+            var template = """
+$scanType = '__SCAN_TYPE__'
+$maxMinutes = __MAX_MINUTES__
+$pollSeconds = 5
+$statusField = '__STATUS_FIELD__'
+
+$baseline = $null
+try {
+    $baseline = (Get-MpComputerStatus).$statusField
+}
+catch {
+    # keep null baseline
+}
+
+Write-Output ('Starting Defender scan: ' + $scanType)
+try {
+    Start-MpScan -ScanType $scanType -ErrorAction Stop
+    Write-Output 'Defender accepted the scan request.'
+}
+catch {
+    Write-Output ('Scan launch failed: ' + $_.Exception.Message)
+    exit 1
+}
+
+$deadline = (Get-Date).AddMinutes($maxMinutes)
+$completed = $false
+while ((Get-Date) -lt $deadline) {
+    $status = Get-MpComputerStatus | Select-Object AMServiceEnabled,AntispywareEnabled,AntivirusEnabled,QuickScanEndTime,FullScanEndTime
+    $endRaw = $status.$statusField
+    $endValue = [string]$endRaw
+
+    if ([string]::IsNullOrWhiteSpace($endValue)) {
+        Write-Output 'status: pending'
+    }
+    else {
+        Write-Output ('status: ' + $endValue)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($endValue)) {
+        if ($null -eq $baseline) {
+            $completed = $true
+            break
+        }
+
+        try {
+            if ([datetime]$endRaw -gt [datetime]$baseline) {
+                $completed = $true
+                break
+            }
+        }
+        catch {
+            $completed = $true
+            break
+        }
+    }
+
+    Start-Sleep -Seconds $pollSeconds
+}
+
+if (-not $completed) {
+    Write-Output ('Scan still running after timeout of ' + $maxMinutes + ' minutes.')
+}
+
+Get-MpComputerStatus |
+    Select-Object AMServiceEnabled,AntispywareEnabled,AntivirusEnabled,QuickScanEndTime,FullScanEndTime |
+    Format-List
+""";
+
+            return template
+                .Replace("__SCAN_TYPE__", scanArg, StringComparison.Ordinal)
+                .Replace("__MAX_MINUTES__", maxMinutes.ToString(), StringComparison.Ordinal)
+                .Replace("__STATUS_FIELD__", statusField, StringComparison.Ordinal);
         }
     }
 }

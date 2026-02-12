@@ -44,18 +44,28 @@ namespace TGWST.App.Shell.Commands
             vm.AddOutput("└───────────────────────────────────────────────────────────────────────────┘\n\n");
 
             vm.AddOutput("┌─ Network Monitoring ──────────────────────────────────────────────────────┐\n");
+            vm.AddOutput("│ network board              BIOS-style ASCII feature control board         │\n");
+            vm.AddOutput("│ network feature status     Show feature checkboxes/status                │\n");
+            vm.AddOutput("│ network feature enable ... Enable a feature (hybrid/pihole)             │\n");
+            vm.AddOutput("│ network feature disable... Disable a feature (hybrid/pihole)            │\n");
+            vm.AddOutput("│ network quick              Recommended quick start for Tier-1 workflows │\n");
+            vm.AddOutput("│ network setup              Full feature setup/status board               │\n");
             vm.AddOutput("│ network baseline           Capture firewall and port baseline            │\n");
             vm.AddOutput("│ network live               Real-time connection monitor (enhanced)       │\n");
             vm.AddOutput("│ network stats              Show historical network flow statistics       │\n");
-            vm.AddOutput("└───────────────────────────────────────────────────────────────────────────┘\n\n");
-
-            vm.AddOutput("┌─ Compliance & Cleanup ────────────────────────────────────────────────────┐\n");
-            vm.AddOutput("│ compliance snapshot [path] Capture compliance drift snapshot             │\n");
-            vm.AddOutput("│ uninstall remnants <app>   Uninstall app and scan for leftovers          │\n");
+            vm.AddOutput("│ network pihole status      Show Pi-hole DNS feature status               │\n");
+            vm.AddOutput("│ network pihole top         Show top blocked domains from Pi-hole FTL     │\n");
+            vm.AddOutput("│ network pihole enable      Turn Pi-hole blocking on                       │\n");
+            vm.AddOutput("│ network pihole disable 5m  Pause Pi-hole blocking for a time window      │\n");
+            vm.AddOutput("│ network pihole sync-dns    Point Windows DNS to current WSL distro IP    │\n");
+            vm.AddOutput("│ network hybrid status      Show Linux-analysis feature status            │\n");
+            vm.AddOutput("│ network hybrid enable      Enable Linux-analysis feature                 │\n");
+            vm.AddOutput("│ network hybrid disable     Disable Linux-analysis feature                │\n");
             vm.AddOutput("└───────────────────────────────────────────────────────────────────────────┘\n\n");
 
             vm.AddOutput("Tip: Use the menu system (↑/↓ arrows) for guided navigation.\n");
             vm.AddOutput("     Press → on a menu item to view detailed information.\n");
+            vm.AddOutput("     Use the SETUP button to open the first-run bootstrap wizard.\n");
             return Task.CompletedTask;
         }
     }
