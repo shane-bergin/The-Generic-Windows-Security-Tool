@@ -5,8 +5,11 @@
 **/TestResult*/
 publish/
 installer/publish/
+installer/publish_app/
+installer/publish_updater/
 installer/HarvestedFiles.wxs
 installer/*.exe
+installer/wix311-binaries.zip
 installer/_downloads/
 installer/_msi_stage/
 *.msi
