@@ -1,12 +1,20 @@
-Some hurried screenshots; please infer functionality - comprehensive readme in the future.
+The Generic Windows Security Tool official tray icon has been released
 
-<img width="667" height="510" alt="credwindow" src="https://github.com/user-attachments/assets/51b5d36e-695b-4e69-a054-05bb5cac5c82" />
-<img width="1317" height="888" alt="5476734143629" src="https://github.com/user-attachments/assets/6d0f9617-5699-4d7c-90ad-cc419809233e" />
-<img width="1242" height="825" alt="monnet" src="https://github.com/user-attachments/assets/b454e948-500d-4339-8d22-fd61380589e5" />
-<img width="1208" height="665" alt="guifine" src="https://github.com/user-attachments/assets/3a8d55e4-ca22-42d7-9f33-a583b711996c" />
-<img width="874" height="707" alt="dnsdemo" src="https://github.com/user-attachments/assets/a6b4081a-c7fb-46cf-8ce8-ae26276790ec" />
-<img width="1122" height="773" alt="asrrdy" src="https://github.com/user-attachments/assets/06fecf4a-1578-4206-9ee6-773b4032f2a7" />
+<img width="112" height="102" alt="image" src="https://github.com/user-attachments/assets/a61df222-9961-482d-9fd0-672e93b34710" />
 
-TGWST is a Windows 11 Pro WPF application with a terminal-style UI that provides security tooling.
 
-<img width="286" height="294" alt="image" src="https://github.com/user-attachments/assets/ccc67afd-35ff-43d1-a4e7-b688b5a3c3c8" />
+A new **Maintenance section** and its' associated dashboard features have been introduced to the build...
+
+<img width="281" height="263" alt="image" src="https://github.com/user-attachments/assets/c8f9406a-535d-45e8-ac26-5619f657b81c" />
+
+**Services Analyzer **feature is working well; it emphasizes critical services versus non critical. When drilling down to the service in the inspector window, there are further details describing typical purpose and use-case information.
+
+<img width="924" height="462" alt="image" src="https://github.com/user-attachments/assets/e7c6d915-7b39-4a6e-8ff6-954074ba6b28" />
+
+**Junk Files** tab lists %APPDATA% and temp files that are typically safe for deletion; that way you don't break any app configurations by select all + deleting content manually from File Explorer. 
+
+<img width="1030" height="252" alt="image" src="https://github.com/user-attachments/assets/1fe00fdd-17c0-4c16-a60d-69bc9392259c" />
+
+Event Log data is presented for swifter and easier interpretation than the Windows native utility. Select 7, 10, or 14 days of relevent event logs to populate and review. Depending on application performance, aggregate event log data timeframe could be increased further in development. 
+
+<img width="1107" height="313" alt="image" src="https://github.com/user-attachments/assets/84083c2e-abe8-4a6a-92c7-f5edb76c6f92" />
