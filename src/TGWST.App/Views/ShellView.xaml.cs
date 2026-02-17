@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
+using TGWST.App.Shell;
 using TGWST.App.Services;
 using TGWST.App.ViewModels;
 using TGWST.App.Windows;
@@ -21,12 +23,15 @@ namespace TGWST.App.Views
         private WslCredentialsWindow? _wslCredentialsWindow;
         private BootstrapWizardWindow? _bootstrapWizardWindow;
         private NetworkOpsWindow? _networkOpsWindow;
+        private MaintenanceOpsWindow? _maintenanceOpsWindow;
         private readonly Dictionary<string, EndpointInspectorWindow> _endpointInspectorWindows = new(StringComparer.OrdinalIgnoreCase);
         private readonly WslCredentialService _wslCredentialService;
         private readonly HybridModeService _hybridModeService;
         private readonly PiHoleBridgeService _piHoleBridgeService;
         private readonly IWslHybridAnalyzer _wslHybridAnalyzer;
         private readonly BootstrapProvisioningService _bootstrapProvisioningService;
+        private readonly InsightService _insightService;
+        private readonly IServiceProvider _services;
 
         public ShellView(
             ShellViewModel viewModel,
@@ -34,7 +39,9 @@ namespace TGWST.App.Views
             HybridModeService hybridModeService,
             PiHoleBridgeService piHoleBridgeService,
             IWslHybridAnalyzer wslHybridAnalyzer,
-            BootstrapProvisioningService bootstrapProvisioningService)
+            BootstrapProvisioningService bootstrapProvisioningService,
+            InsightService insightService,
+            IServiceProvider services)
         {
             InitializeComponent();
             DataContext = viewModel;
@@ -43,6 +50,8 @@ namespace TGWST.App.Views
             _piHoleBridgeService = piHoleBridgeService;
             _wslHybridAnalyzer = wslHybridAnalyzer;
             _bootstrapProvisioningService = bootstrapProvisioningService;
+            _insightService = insightService;
+            _services = services;
             Loaded += OnLoaded;
         }
 
@@ -396,6 +405,9 @@ namespace TGWST.App.Views
                 case "__open_network_ops":
                     OpenNetworkOpsWindow();
                     return;
+                case "__open_maintenance_ops":
+                    OpenMaintenanceOpsWindow();
+                    return;
                 case "__focus_pane":
                     FocusActivePane(vm);
                     return;
@@ -417,6 +429,11 @@ namespace TGWST.App.Views
             OpenNetworkOpsWindow();
         }
 
+        public void ShowMaintenanceOpsWindow()
+        {
+            OpenMaintenanceOpsWindow();
+        }
+
         private void OpenNetworkOpsWindow()
         {
             try
@@ -432,7 +449,7 @@ namespace TGWST.App.Views
                     return;
                 }
 
-                var window = new NetworkOpsWindow(_hybridModeService, _wslCredentialService, _piHoleBridgeService, _wslHybridAnalyzer)
+                var window = new NetworkOpsWindow(_hybridModeService, _wslCredentialService, _piHoleBridgeService, _wslHybridAnalyzer, _insightService)
                 {
                     Owner = this
                 };
@@ -443,6 +460,36 @@ namespace TGWST.App.Views
             catch (Exception ex)
             {
                 ReportUiError("open Network Operations window", ex);
+            }
+        }
+
+        private void OpenMaintenanceOpsWindow()
+        {
+            try
+            {
+                if (_maintenanceOpsWindow is { IsLoaded: true })
+                {
+                    if (_maintenanceOpsWindow.WindowState == WindowState.Minimized)
+                    {
+                        _maintenanceOpsWindow.WindowState = WindowState.Normal;
+                    }
+
+                    _maintenanceOpsWindow.Activate();
+                    return;
+                }
+
+                var vm = _services.GetRequiredService<MaintenanceOpsViewModel>();
+                var window = new MaintenanceOpsWindow(vm)
+                {
+                    Owner = this
+                };
+                window.Closed += (_, _) => _maintenanceOpsWindow = null;
+                _maintenanceOpsWindow = window;
+                window.Show();
+            }
+            catch (Exception ex)
+            {
+                ReportUiError("open Maintenance Operations window", ex);
             }
         }
 

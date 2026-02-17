@@ -1,12 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Principal;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using TGWST.App.Shell;
+using TGWST.Core.AppControl;
+using TGWST.Core.Hardening;
+using TGWST.Core.Network;
 
 namespace TGWST.App.ViewModels
 {
@@ -20,6 +27,9 @@ namespace TGWST.App.ViewModels
         private readonly CommandRegistry _registry;
         private readonly TaskOutputService _outputService;
         private readonly InsightService _insightService;
+        private readonly HardeningEngine _hardeningEngine;
+        private readonly FirewallStatusService _firewallService;
+        private readonly WdacEngine _wdacEngine;
         private bool _acronymsExpanded;
         private int _menuIndex;
         private MenuNode? _menuRoot;
@@ -88,13 +98,16 @@ namespace TGWST.App.ViewModels
         private readonly List<string> _history = new();
         private int _historyIndex = -1;
 
-        public ShellViewModel(CommandRegistry registry, TaskOutputService outputService, InsightService insightService)
+        public ShellViewModel(CommandRegistry registry, TaskOutputService outputService, InsightService insightService, HardeningEngine hardeningEngine, FirewallStatusService firewallService, WdacEngine wdacEngine)
         {
             _registry = registry;
             _outputService = outputService;
             _insightService = insightService;
+            _hardeningEngine = hardeningEngine;
+            _firewallService = firewallService;
+            _wdacEngine = wdacEngine;
             UpdatePromptPrefix(IsAdministrator());
-            WriteBanner();
+            // _ = WriteSecurityPostureSummaryAsync(); // Disabled one-time startup
             BuildMenu();
         }
 
@@ -318,14 +331,130 @@ namespace TGWST.App.ViewModels
             }
         }
 
-        private void WriteBanner()
+        private async Task WriteSecurityPostureSummaryAsync()
         {
-            AddOutput("================================================================================\n");
-            AddOutput(" TGWST :: SECURITY OPERATIONS TERMINAL\n");
-            AddOutput("--------------------------------------------------------------------------------\n");
-            AddOutput(" [menu] click to select | double-click to execute | keyboard fully supported\n");
-            AddOutput(" [hint] use 'network board' for feature matrix and 'help' for all commands\n");
-            AddOutput("================================================================================\n\n");
+            AddOutput("Gathering security posture...\n");
+
+            var summary = new StringBuilder();
+            summary.AppendLine("╔═══════════════════════════════════════════════════════════════════════════╗");
+            summary.AppendLine("║ Security Posture Overview                                                 ║");
+            summary.AppendLine("╠═══════════════════════════════════════════════════════════════════════════╣");
+
+            // WDAC
+            try
+            {
+                var wdacEngine = new WdacEngine();
+                var (policies, error) = wdacEngine.GetInstalledPolicies();
+                if (error != null)
+                {
+                    summary.AppendLine("║ WDAC:       Error getting status                                        ║");
+                }
+                else
+                {
+                    var enforced = policies.Any(p => p.IsEnforced);
+                    var policyCount = policies.Count;
+                    var statusText = $"{(enforced ? "Enforced" : "Audit")} ({policyCount} {(policyCount == 1 ? "policy" : "policies")})";
+                    summary.AppendLine($"║ WDAC:       {statusText,-59} ║");
+                }
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Error: {ex.Message.Split('\n')[0]}";
+                summary.AppendLine($"║ WDAC:       {errorMsg,-59} ║");
+            }
+
+            // ASR
+            try
+            {
+                var hardeningEngine = new HardeningEngine();
+                var asrRules = await hardeningEngine.GetCurrentAsrRulesAsync();
+                var blockCount = asrRules.Count(r => r.Action == AsrAction.Block);
+                var total = asrRules.Count;
+                var asrStatus = $"{blockCount}/{total} rules in block mode";
+                summary.AppendLine($"║ ASR:        {asrStatus,-59} ║");
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Error: {ex.Message.Split('\n')[0]}";
+                summary.AppendLine($"║ ASR:        {errorMsg,-59} ║");
+            }
+
+            // Defender
+            try
+            {
+                var script = "Get-MpComputerStatus | Select-Object -Property AMServiceEnabled, AntispywareEnabled, RealTimeProtectionEnabled | ConvertTo-Json -Compress";
+                var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true
+                };
+
+                using var p = System.Diagnostics.Process.Start(psi);
+                if (p == null) throw new InvalidOperationException("Failed to start PowerShell");
+
+                var stdout = await p.StandardOutput.ReadToEndAsync();
+                await p.WaitForExitAsync();
+
+                var defenderStatus = System.Text.Json.JsonSerializer.Deserialize<DefenderStatus>(stdout, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var rtp = defenderStatus?.RealTimeProtectionEnabled ?? false;
+                var asw = defenderStatus?.AntispywareEnabled ?? false;
+                var av = defenderStatus?.AMServiceEnabled ?? false;
+
+                var defenderText = $"RTP: {(rtp ? "On" : "Off")}, Antispyware: {(asw ? "On" : "Off")}, Antivirus: {(av ? "On" : "Off")}";
+                summary.AppendLine($"║ Defender:   {defenderText,-59} ║");
+
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Error: {ex.Message.Split('\n')[0]}";
+                summary.AppendLine($"║ Defender:   {errorMsg,-59} ║");
+            }
+
+            // Firewall
+            try
+            {
+                var firewallService = new FirewallStatusService();
+                var firewallProfiles = await firewallService.GetStatusAsync();
+                var onProfiles = firewallProfiles.Where(p => p.State == "ON").Select(p => p.Profile).ToList();
+                var onText = onProfiles.Any() ? string.Join(", ", onProfiles) : "Off";
+                summary.AppendLine($"║ Firewall:   {onText,-59} ║");
+
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Error: {ex.Message.Split('\n')[0]}";
+                summary.AppendLine($"║ Firewall:   {errorMsg,-59} ║");
+            }
+            
+            summary.AppendLine("╚═══════════════════════════════════════════════════════════════════════════╝");
+            
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is null) return;
+
+            if (dispatcher.CheckAccess())
+            {
+                ClearOutput();
+                AddOutput(summary.ToString());
+            }
+            else
+            {
+                await dispatcher.InvokeAsync(() => {
+                    ClearOutput();
+                    AddOutput(summary.ToString());
+                });
+            }
+        }
+
+        private sealed class DefenderStatus
+        {
+            public bool AMServiceEnabled { get; set; }
+            public bool AntispywareEnabled { get; set; }
+            public bool RealTimeProtectionEnabled { get; set; }
         }
 
         private void BuildMenu()
@@ -617,6 +746,28 @@ namespace TGWST.App.ViewModels
                             }),
                         new MenuNode("Signature Check", "scan sdk sigcheck", "Verify signatures on a target path",
                             "Uses signtool if available; otherwise falls back to Authenticode checks.")
+                    }),
+                    new MenuNode("Maintenance", children: new[]
+                    {
+                        new MenuNode("Open Maintenance Center", "maintenance open", "Deleted recovery, services, junk, and event analysis",
+                            detail: null,
+                            richDetail: new DetailContent
+                            {
+                                Summary = "Open maintenance appliances window for recovery and cleanup workflows",
+                                Changes = new[]
+                                {
+                                    "Deleted File Recovery (quick/fallback)",
+                                    "Services analyzer with one-click disable/restore",
+                                    "TEMP/APPDATA junk analysis + safe cleanup",
+                                    "Event log analyzer (7/10/14 day windows)"
+                                },
+                                Risks = new[]
+                                {
+                                    "Service disable and cleanup actions are privileged",
+                                    "Review candidates before applying destructive actions"
+                                },
+                                RollbackInfo = "Service restore is one-click when backup exists"
+                            })
                     })
                 });
 

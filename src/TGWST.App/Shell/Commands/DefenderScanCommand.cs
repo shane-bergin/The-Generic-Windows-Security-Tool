@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using TGWST.App.Services;
 using TGWST.App.ViewModels;
 using TGWST.Core.Hardening;
 using Microsoft.Win32;
@@ -12,10 +13,12 @@ namespace TGWST.App.Shell.Commands
     public sealed class DefenderScanCommand : ICommandHandler
     {
         private readonly TaskOutputService _outputService;
+        private readonly OperationCoordinatorService _operations;
 
-        public DefenderScanCommand(TaskOutputService outputService)
+        public DefenderScanCommand(TaskOutputService outputService, OperationCoordinatorService operations)
         {
             _outputService = outputService;
+            _operations = operations;
         }
 
         public string Name => "scan";
@@ -53,32 +56,41 @@ namespace TGWST.App.Shell.Commands
                     return;
                 }
 
+                if (!_operations.TryAcquireHeavy($"Defender {scanArg}", out var lease, out var blockingOwner))
+                {
+                    vm.AddOutput($"[X] Busy: '{blockingOwner}'. Wait for the active heavy task to finish.\n");
+                    return;
+                }
+
                 var session = _outputService.CreateSession($"Windows Defender - {scanArg}", vm.AcronymsExpanded);
                 var progressVm = session.ViewModel;
                 progressVm.Append($"Starting {scanArg}...\n");
 
-                try
+                using (lease)
                 {
-                    var script = BuildDefenderScanScript(scanArg);
-                    var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-                    var exitCode = await ProcessRunner.RunAsync(
-                        "powershell.exe",
-                        $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}",
-                        progressVm.Append,
-                        session.Cancellation.Token);
-                    progressVm.Append($"Exit code: {exitCode}\n");
-                    progressVm.Status = exitCode == 0 ? "Completed" : "Failed";
-                    progressVm.Append(exitCode == 0 ? "Scan completed.\n" : "Scan completed with errors.\n");
-                }
-                catch (OperationCanceledException)
-                {
-                    progressVm.Status = "Canceled";
-                    progressVm.Append("Scan canceled by user.\n");
-                }
-                catch (Exception ex)
-                {
-                    progressVm.Status = "Failed";
-                    progressVm.Append($"[error] {ex.Message}\n");
+                    try
+                    {
+                        var script = BuildDefenderScanScript(scanArg);
+                        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+                        var exitCode = await ProcessRunner.RunAsync(
+                            "powershell.exe",
+                            $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}",
+                            progressVm.Append,
+                            session.Cancellation.Token);
+                        progressVm.Append($"Exit code: {exitCode}\n");
+                        progressVm.Status = exitCode == 0 ? "Completed" : "Failed";
+                        progressVm.Append(exitCode == 0 ? "Scan completed.\n" : "Scan completed with errors.\n");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        progressVm.Status = "Canceled";
+                        progressVm.Append("Scan canceled by user.\n");
+                    }
+                    catch (Exception ex)
+                    {
+                        progressVm.Status = "Failed";
+                        progressVm.Append($"[error] {ex.Message}\n");
+                    }
                 }
 
                 return;

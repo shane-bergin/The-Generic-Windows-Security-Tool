@@ -200,6 +200,7 @@
                               SelectionChanged="OnQuickMenuSelectionChanged">
                         <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Content="[TOOLS]" />
                         <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__open_network_ops" Content="Network Operations Window" />
+                        <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__open_maintenance_ops" Content="Maintenance Operations Window" />
                         <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__explain_last" Content="Explain Last Output (F3)" />
                         <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="__summarize_output" Content="Summarize Output (F4)" />
                         <ComboBoxItem Style="{StaticResource QuickMenuItemStyle}" Tag="network board" Content="Network Feature Board" />
@@ -217,6 +218,7 @@
                     <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network feature disable hybrid" Content="HYBRID OFF" />
                     <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network pihole status" Content="PIHOLE" />
                     <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="network pihole top" Content="TOP-BLOCK" />
+                    <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="__open_maintenance_ops" Content="MAINT" />
                     <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="__open_wsl_credentials" Content="WSL-CREDS" />
                     <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="help" Content="HELP" />
                     <Button Style="{StaticResource QuickActionButtonStyle}" Click="OnQuickActionClick" Tag="clear" Content="CLEAR" />

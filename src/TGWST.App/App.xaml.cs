@@ -7,16 +7,23 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using TGWST.Core.AppControl;
+using TGWST.Core.Audit;
+using TGWST.Core.Hardening;
+using TGWST.Core.Network;
+using TGWST.Core.Network.Hybrid;
+using TGWST.Core.Policies;
+using TGWST.Core.Recovery;
 using TGWST.Core.Services;
+using TGWST.Core.ServicesAnalysis;
+using TGWST.Core.Junk;
+using TGWST.Core.EventLog;
 using TGWST.App.Shell;
 using TGWST.App.Shell.Commands;
 using TGWST.App.Services;
 using TGWST.App.ViewModels;
 using TGWST.App.Views;
 using TGWST.App.Windows;
-using TGWST.Core.Audit;
-using TGWST.Core.Network.Hybrid;
-using TGWST.Core.Policies;
 using Forms = System.Windows.Forms;
 
 namespace TGWST.App
@@ -317,20 +324,31 @@ namespace TGWST.App
         {
             // 1. Register Core Native Services (Singletons = created once, reused)
             services.AddSingleton<NativeScanner>();
-            services.AddSingleton<LocalIntelligence>();
+            // services.AddSingleton<LocalIntelligence>();
+            services.AddSingleton<DeletedFileRecoveryEngine>();
+            services.AddSingleton<ServiceAnalyzerEngine>();
+            services.AddSingleton<JunkAnalyzerEngine>();
+            services.AddSingleton<EventLogAnalyzer>();
 
             // 2. Register ViewModels
             services.AddTransient<ShellViewModel>();
+            services.AddTransient<NetworkLiveViewModel>();
+            services.AddTransient<MaintenanceOpsViewModel>();
 
             // 3. Register Shell Infrastructure
             services.AddSingleton<TaskOutputService>();
+            services.AddSingleton<OperationCoordinatorService>();
             services.AddSingleton<InsightService>();
             services.AddSingleton<AuditLogService>();
             services.AddSingleton<PolicySnapshotStore>();
             services.AddSingleton<IWslHybridAnalyzer, WslHybridAnalyzer>();
             services.AddSingleton<HybridModeService>();
             services.AddSingleton<WslCredentialService>();
+            services.AddSingleton<WslDnsResolver>();
             services.AddSingleton<PiHoleBridgeService>();
+            services.AddSingleton<HardeningEngine>();
+            services.AddSingleton<FirewallStatusService>();
+            services.AddSingleton<WdacEngine>();
             services.AddSingleton<BootstrapProvisioningService>();
             services.AddSingleton<ICommandHandler, HelpCommand>();
             services.AddSingleton<ICommandHandler, ClearCommand>();
@@ -339,6 +357,8 @@ namespace TGWST.App
             services.AddSingleton<ICommandHandler, AsrCommand>();
             services.AddSingleton<ICommandHandler, DefenderScanCommand>();
             services.AddSingleton<ICommandHandler, NetworkCommand>();
+            services.AddSingleton<ICommandHandler, TempCleanupCommand>();
+            services.AddSingleton<ICommandHandler, MaintenanceCommand>();
             services.AddSingleton<CommandRegistry>();
 
             // 4. Register Views

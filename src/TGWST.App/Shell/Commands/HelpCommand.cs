@@ -63,6 +63,11 @@ namespace TGWST.App.Shell.Commands
             vm.AddOutput("│ network hybrid disable     Disable Linux-analysis feature                │\n");
             vm.AddOutput("└───────────────────────────────────────────────────────────────────────────┘\n\n");
 
+            vm.AddOutput("┌─ Maintenance Operations ──────────────────────────────────────────────────┐\n");
+            vm.AddOutput("│ maintenance               Open maintenance operations window              │\n");
+            vm.AddOutput("│ maint                     Alias for maintenance                           │\n");
+            vm.AddOutput("└───────────────────────────────────────────────────────────────────────────┘\n\n");
+
             vm.AddOutput("Tip: Use the menu system (↑/↓ arrows) for guided navigation.\n");
             vm.AddOutput("     Press → on a menu item to view detailed information.\n");
             vm.AddOutput("     Use the SETUP button to open the first-run bootstrap wizard.\n");
