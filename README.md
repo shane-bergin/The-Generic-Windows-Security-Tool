@@ -4,13 +4,11 @@ TGWST is now a lean Windows 11 security awareness dashboard for .NET 8 and WPF. 
 
 ## Scope
 
-- Pure WPF desktop GUI with a dark ASCII/cyber dashboard aesthetic.
-- Monospace UI, black/deep-navy background, and a strict cyan/red/orange/white/light-gray palette.
 - No command prompt, shell surface, service companion, updater process, or local model assistant.
 - Machine-agnostic storage through Windows known folders such as `%LOCALAPPDATA%` and `%PROGRAMDATA%`.
-- Tray icon reflects current threat level with cyan, orange, or red status.
 
 ## Dashboards
+<img width="1299" height="847" alt="image" src="https://github.com/user-attachments/assets/0156f6e9-013c-4704-8567-91e5a8482296" />
 
 ### Dashboard
 
@@ -46,7 +44,6 @@ TGWST is now a lean Windows 11 security awareness dashboard for .NET 8 and WPF. 
 ### Logs
 
 - Persistent local GUI event log.
-- Read-only colored ASCII feed with severity filtering.
 - No user input surface.
 
 ## Build
