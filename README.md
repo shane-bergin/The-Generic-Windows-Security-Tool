@@ -63,11 +63,3 @@ dotnet run --project src\TGWST.App\TGWST.App.csproj
 ```
 
 Some telemetry sources may report degraded status without elevation. The app does not weaken controls for convenience; it continues read-only discovery and reports protected checks as degraded.
-
-## Screenshot Placeholders
-
-- `docs/screenshots/dashboard.png`
-- `docs/screenshots/network.png`
-- `docs/screenshots/telemetry.png`
-- `docs/screenshots/tools.png`
-- `docs/screenshots/logs.png`
