@@ -18,6 +18,12 @@ namespace TGWST.Core.EventLog
 
         public async Task<IReadOnlyList<EventLogFinding>> ScanAsync(TimeSpan lookback, CancellationToken ct = default)
         {
+            var result = await ScanWithWarningsAsync(lookback, ct).ConfigureAwait(false);
+            return result.Findings;
+        }
+
+        public async Task<EventLogScanResult> ScanWithWarningsAsync(TimeSpan lookback, CancellationToken ct = default)
+        {
             return await Task.Run(() =>
             {
                 var millis = (long)lookback.TotalMilliseconds;
@@ -30,6 +36,7 @@ namespace TGWST.Core.EventLog
                 };
 
                 var aggregate = new Dictionary<string, AggregateItem>(StringComparer.OrdinalIgnoreCase);
+                var warnings = new List<string>();
 
                 foreach (var (logName, xpath) in queries)
                 {
@@ -57,8 +64,8 @@ namespace TGWST.Core.EventLog
                                     }
 
                                     var message = SafeFormat(rec);
-                                    var summary = BuildSummary(rule.Rule, message);
-                                    var key = $"{logName}|{rec.Id}|{rec.ProviderName}|{rule.Rule}|{summary}";
+                                    var evidence = BuildEvidence(rule.Rule, message);
+                                    var key = $"{logName}|{rec.Id}|{rec.ProviderName}|{rule.Rule}|{evidence}";
 
                                     if (!aggregate.TryGetValue(key, out var existing))
                                     {
@@ -72,7 +79,7 @@ namespace TGWST.Core.EventLog
                                             Importance = rule.Importance,
                                             IsDrastic = rule.IsDrastic,
                                             Rule = rule.Rule,
-                                            Summary = summary,
+                                            Evidence = evidence,
                                             Purpose = rule.Purpose,
                                             WhyItMatters = rule.WhyItMatters,
                                             Recommendation = rule.Recommendation,
@@ -100,13 +107,16 @@ namespace TGWST.Core.EventLog
                             }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // best effort; inaccessible logs are skipped
+                        var warning = string.IsNullOrWhiteSpace(ex.Message)
+                            ? $"Skipped log '{logName}'."
+                            : $"Skipped log '{logName}': {ex.Message}";
+                        warnings.Add(warning);
                     }
                 }
 
-                return aggregate.Values
+                var findings = aggregate.Values
                     .Select(x => new EventLogFinding(
                         TimeCreated: x.TimeCreated,
                         LogName: x.LogName,
@@ -116,7 +126,7 @@ namespace TGWST.Core.EventLog
                         Importance: x.Importance,
                         IsDrastic: x.IsDrastic,
                         Rule: x.Rule,
-                        Summary: x.Summary,
+                        Evidence: x.Evidence,
                         Purpose: x.Purpose,
                         WhyItMatters: x.WhyItMatters,
                         Recommendation: x.Recommendation,
@@ -126,6 +136,8 @@ namespace TGWST.Core.EventLog
                     .ThenByDescending(x => SeverityRank(x.Severity))
                     .ThenByDescending(x => x.TimeCreated)
                     .ToArray();
+
+                return new EventLogScanResult(findings, warnings);
             }, ct).ConfigureAwait(false);
         }
 
@@ -390,7 +402,7 @@ namespace TGWST.Core.EventLog
             }
         }
 
-        private static string BuildSummary(string rule, string message)
+        private static string BuildEvidence(string rule, string message)
         {
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -429,7 +441,7 @@ namespace TGWST.Core.EventLog
             public string Importance { get; set; } = "Typical";
             public bool IsDrastic { get; set; }
             public string Rule { get; set; } = string.Empty;
-            public string Summary { get; set; } = string.Empty;
+            public string Evidence { get; set; } = string.Empty;
             public string Purpose { get; set; } = string.Empty;
             public string WhyItMatters { get; set; } = string.Empty;
             public string Recommendation { get; set; } = string.Empty;

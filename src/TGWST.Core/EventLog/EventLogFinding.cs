@@ -11,9 +11,13 @@ public sealed record EventLogFinding(
     string Importance,
     bool IsDrastic,
     string Rule,
-    string Summary,
+    string Evidence,
     string Purpose,
     string WhyItMatters,
     string Recommendation,
     string? Message,
     int Count);
+
+public sealed record EventLogScanResult(
+    IReadOnlyList<EventLogFinding> Findings,
+    IReadOnlyList<string> Warnings);

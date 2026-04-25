@@ -11,9 +11,7 @@ internal static class BuildInfo
     internal sealed record BuildStamp(
         string Version,
         string? Commit,
-        DateTimeOffset? BuiltAtUtc,
-        string ExePath,
-        string StampPath)
+        DateTimeOffset? BuiltAtUtc)
     {
         public string DisplayVersion
         {
@@ -45,9 +43,7 @@ internal static class BuildInfo
         return new BuildStamp(
             Version: data.TryGetValue("Version", out var v) ? v ?? version : version,
             Commit: data.TryGetValue("Commit", out var c) ? c : null,
-            BuiltAtUtc: ParseDate(data.TryGetValue("BuildTimeUtc", out var t) ? t : null),
-            ExePath: exePath,
-            StampPath: stampPath);
+            BuiltAtUtc: ParseDate(data.TryGetValue("BuildTimeUtc", out var t) ? t : null));
     }
 
     private static string? TryGetFileVersion(string exePath)

@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>false</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -21,55 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Assets\WDAC\*.xml">
-      <Link>WDAC\%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-    <Content Include="Assets\WDAC\wdac-shipped-policies.json">
-      <Link>WDAC\wdac-shipped-policies.json</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup Condition="Exists('Assets\\GeoLite2-Country-Blocks-IPv4.csv')">
-    <Content Include="Assets\\GeoLite2-Country-Blocks-IPv4.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <PropertyGroup>
-    <SignToolPath Condition="'$(SignToolPath)'==''">$(ProgramFiles(x86))\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe</SignToolPath>
-    <SignTimestampUrl Condition="'$(SignTimestampUrl)'==''">http://timestamp.digicert.com</SignTimestampUrl>
-  </PropertyGroup>
-
-  <Target Name="SignPublished" AfterTargets="Publish" Condition="'$(SignPfxPath)' != ''">
-    <Message Text="Signing with $(SignPfxPath)" Importance="high" />
-    <Exec Command="&quot;$(SignToolPath)&quot; sign /fd sha256 /f &quot;$(SignPfxPath)&quot; /p &quot;$(SignPfxPassword)&quot; /tr &quot;$(SignTimestampUrl)&quot; /td sha256 &quot;$(PublishDir)TGWST.App.exe&quot;" />
-  </Target>
-
-  <Target Name="StageRecommendedDriverBlockPolicy" AfterTargets="Publish" Condition="Exists('$(windir)\\schemas\\CodeIntegrity\\ExamplePolicies\\RecommendedDriverBlock_Enforced.xml')">
-    <Message Text="Staging RecommendedDriverBlock_Enforced.xml into publish WDAC folder" Importance="high" />
-    <MakeDir Directories="$(PublishDir)WDAC" />
-    <Copy SourceFiles="$(windir)\\schemas\\CodeIntegrity\\ExamplePolicies\\RecommendedDriverBlock_Enforced.xml" DestinationFiles="$(PublishDir)WDAC\\WDAC_Enforced_With_Recommended_Driver_Block_Rules.xml" SkipUnchangedFiles="true" />
-  </Target>
-
-  <ItemGroup Condition="Exists('..\TGWST.Core\Native\yara64.dll')">
-    <Content Include="..\TGWST.Core\Native\yara64.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
+    <PackageReference Include="System.Management" Version="10.0.2" />
   </ItemGroup>
 </Project>

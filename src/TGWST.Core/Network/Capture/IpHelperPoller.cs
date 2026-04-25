@@ -9,16 +9,9 @@ using System.Threading.Tasks;
 
 namespace TGWST.Core.Network.Capture
 {
-    /// <summary>
-    /// Polls IP Helper API for TCP/UDP connection tables.
-    /// Works without elevation but provides connection state only (no bandwidth).
-    /// </summary>
     public sealed class IpHelperPoller : IDisposable
     {
-        #region P/Invoke Declarations
-
         private const int AF_INET = 2;
-        private const int AF_INET6 = 23;
 
         [DllImport("iphlpapi.dll", SetLastError = true)]
         private static extern uint GetExtendedTcpTable(
@@ -73,7 +66,6 @@ namespace TGWST.Core.Network.Capture
         private struct MIB_TCPTABLE_OWNER_PID
         {
             public uint dwNumEntries;
-            // Followed by MIB_TCPROW_OWNER_PID[] table
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -88,10 +80,7 @@ namespace TGWST.Core.Network.Capture
         private struct MIB_UDPTABLE_OWNER_PID
         {
             public uint dwNumEntries;
-            // Followed by MIB_UDPROW_OWNER_PID[] table
         }
-
-        #endregion
 
         private readonly CancellationTokenSource _cts = new();
         private readonly Channel<ConnectionSnapshot> _snapshotChannel;
@@ -111,9 +100,6 @@ namespace TGWST.Core.Network.Capture
                 });
         }
 
-        /// <summary>
-        /// Start polling connection tables at the specified interval.
-        /// </summary>
         public void Start(TimeSpan pollInterval)
         {
             if (_pollingTask != null)
@@ -134,7 +120,6 @@ namespace TGWST.Core.Network.Capture
                     }
                     catch
                     {
-                        // Log error but continue polling
                     }
 
                     try
@@ -149,20 +134,13 @@ namespace TGWST.Core.Network.Capture
             });
         }
 
-        /// <summary>
-        /// Get a single snapshot of current connections synchronously.
-        /// </summary>
         public ConnectionSnapshot GetCurrentConnections()
         {
             var connections = new List<ConnectionEntry>();
 
-            // Get TCP connections
             GetTcpConnections(connections);
-
-            // Get UDP endpoints
             GetUdpEndpoints(connections);
 
-            // Resolve process names
             foreach (var conn in connections)
             {
                 conn.ProcessName = GetProcessName(conn.ProcessId);
@@ -179,6 +157,10 @@ namespace TGWST.Core.Network.Capture
         {
             int size = 0;
             GetExtendedTcpTable(IntPtr.Zero, ref size, true, AF_INET, TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL, 0);
+            if (size <= 0)
+            {
+                return;
+            }
 
             var buffer = Marshal.AllocHGlobal(size);
             try
@@ -218,6 +200,10 @@ namespace TGWST.Core.Network.Capture
         {
             int size = 0;
             GetExtendedUdpTable(IntPtr.Zero, ref size, true, AF_INET, UDP_TABLE_CLASS.UDP_TABLE_OWNER_PID, 0);
+            if (size <= 0)
+            {
+                return;
+            }
 
             var buffer = Marshal.AllocHGlobal(size);
             try
@@ -240,7 +226,7 @@ namespace TGWST.Core.Network.Capture
                             RemoteAddress = "*",
                             RemotePort = 0,
                             ProcessId = (int)row.dwOwningPid,
-                            State = TcpState.Listen // UDP is stateless, mark as listening
+                            State = TcpState.Listen
                         });
 
                         rowPtr += rowSize;
@@ -255,7 +241,6 @@ namespace TGWST.Core.Network.Capture
 
         private static int NetworkToHostPort(uint port)
         {
-            // Port is stored in network byte order (big-endian)
             return (ushort)IPAddress.NetworkToHostOrder((short)(port & 0xFFFF));
         }
 
@@ -287,7 +272,6 @@ namespace TGWST.Core.Network.Capture
             }
             catch
             {
-                // Ignore timeout
             }
 
             _cts.Dispose();

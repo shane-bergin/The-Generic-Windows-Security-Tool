@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -19,23 +20,27 @@ namespace TGWST.Core.Network
     {
         public async Task<IReadOnlyList<FirewallProfileStatus>> GetStatusAsync()
         {
-            var output = await RunNetshAsync("advfirewall show allprofiles");
+            var output = await RunNetshAsync("advfirewall", "show", "allprofiles");
             return Parse(output);
         }
 
-        private static async Task<string> RunNetshAsync(string args)
+        private static async Task<string> RunNetshAsync(params string[] args)
         {
             return await Task.Run(() =>
             {
                 var psi = new ProcessStartInfo
                 {
-                    FileName = "netsh",
-                    Arguments = args,
+                    FileName = Path.Combine(Environment.SystemDirectory, "netsh.exe"),
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
+
+                foreach (var arg in args)
+                {
+                    psi.ArgumentList.Add(arg);
+                }
 
                 using var p = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start netsh.");
                 var stdout = p.StandardOutput.ReadToEnd();

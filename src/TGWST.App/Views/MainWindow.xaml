@@ -1,0 +1,380 @@
+﻿<Window x:Class="TGWST.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:TGWST.App.ViewModels"
+        Title="TGWST - ASCII Security Dashboard"
+        Icon="/Assets/generic_windows_security_tool_icon.png"
+        Width="1320"
+        Height="860"
+        MinWidth="1120"
+        MinHeight="720"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style x:Key="MetricCardStyle" TargetType="Border" BasedOn="{StaticResource AsciiBorderStyle}">
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="MinWidth" Value="185" />
+            <Setter Property="MinHeight" Value="96" />
+        </Style>
+
+        <Style x:Key="MetricLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style x:Key="MetricValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource WhiteBrush}" />
+            <Setter Property="FontSize" Value="21" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+
+        <Style x:Key="ThreatTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MetricValueStyle}">
+            <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Dashboard.ThreatLevel}" Value="{x:Static vm:CyberThreatLevel.Elevated}">
+                    <Setter Property="Foreground" Value="{StaticResource OrangeBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Dashboard.ThreatLevel}" Value="{x:Static vm:CyberThreatLevel.Critical}">
+                    <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource BlackBrush}" Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-- TGWST :: MACHINE-AGNOSTIC GUI SECURITY DASHBOARD -------------------------+" />
+                    <TextBlock Foreground="{StaticResource LightGrayBrush}" Text="| high-signal posture | active network discovery | telemetry feed | GUI only |" />
+                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="+--------------------------------------------------------------------------+" />
+                </StackPanel>
+                <Button DockPanel.Dock="Right"
+                        Width="132"
+                        Margin="16,0,0,0"
+                        Command="{Binding RefreshCommand}"
+                        Content="[ REFRESH ]" />
+            </DockPanel>
+        </Border>
+
+        <TabControl Grid.Row="1">
+            <TabItem Header="Dashboard">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+                        <WrapPanel>
+                            <Border Style="{StaticResource MetricCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[SECURITY SCORE]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.SecurityScore, StringFormat={}{0}/100}" />
+                                    <ProgressBar Margin="0,10,0,0" Maximum="100" Value="{Binding Dashboard.SecurityScore, Mode=OneWay}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource MetricCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[THREAT LEVEL]" />
+                                    <TextBlock Style="{StaticResource ThreatTextStyle}" Text="{Binding Dashboard.ThreatLabel}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource MetricCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[SYSTEM INTEGRITY]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.SystemIntegrityPercent, StringFormat={}{0}%}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource MetricCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[NETWORK EXPOSURE]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.NetworkExposure}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource MetricCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[LAST FULL SCAN]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="15" Text="{Binding Dashboard.LastFullScan}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource MetricCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[ACTIVE THREATS]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.ActiveThreats}" />
+                                </StackPanel>
+                            </Border>
+                        </WrapPanel>
+
+                        <Border Style="{StaticResource AsciiBorderStyle}" Margin="0,8,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="[DEFENDER]" />
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding Dashboard.DefenderRealtime, StringFormat=Realtime: {0}}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="[ASR]" />
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding Dashboard.AsrBlockedControls, StringFormat=Blocked Controls: {0}}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="[FIREWALL]" />
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding Dashboard.VulnerableFirewallProfiles, StringFormat=Profiles Needing Review: {0}}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Network">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Grid.Row="0">
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[CONNECTIONS]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.TotalConnections}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[INBOUND EXPOSURE]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.InboundExposure}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[OUTBOUND]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.OutboundConnections}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}" MinWidth="260">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[BANDWIDTH]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="14" Text="{Binding Network.BandwidthStatus}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}" MinWidth="260">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[FIREWALL]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="14" Text="{Binding Network.FirewallStatusText}" />
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+
+                    <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- RISKY CONNECTIONS -------------------------------------------------------+" />
+                            <DataGrid ItemsSource="{Binding Network.RiskyConnections}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Risk" Binding="{Binding RiskScore}" Width="70" />
+                                    <DataGridTextColumn Header="Why" Binding="{Binding Risk}" Width="180" />
+                                    <DataGridTextColumn Header="Process" Binding="{Binding Process}" Width="160" />
+                                    <DataGridTextColumn Header="PID" Binding="{Binding ProcessId}" Width="70" />
+                                    <DataGridTextColumn Header="Proto" Binding="{Binding Protocol}" Width="70" />
+                                    <DataGridTextColumn Header="Local" Binding="{Binding Local}" Width="*" />
+                                    <DataGridTextColumn Header="Remote" Binding="{Binding Remote}" Width="*" />
+                                    <DataGridTextColumn Header="State" Binding="{Binding State}" Width="110" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Grid.Row="2" Style="{StaticResource AsciiBorderStyle}">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- ACTIVE CONNECTION SAMPLE -----------------------------------------------+" />
+                            <DataGrid ItemsSource="{Binding Network.Connections}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Process" Binding="{Binding Process}" Width="170" />
+                                    <DataGridTextColumn Header="PID" Binding="{Binding ProcessId}" Width="70" />
+                                    <DataGridTextColumn Header="Proto" Binding="{Binding Protocol}" Width="70" />
+                                    <DataGridTextColumn Header="Local" Binding="{Binding Local}" Width="*" />
+                                    <DataGridTextColumn Header="Remote" Binding="{Binding Remote}" Width="*" />
+                                    <DataGridTextColumn Header="State" Binding="{Binding State}" Width="110" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Telemetry">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Grid.Row="0">
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[STATUS]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="16" Text="{Binding Telemetry.Status}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[PROCESS]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Telemetry.ProcessSignals}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[REGISTRY]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Telemetry.RegistrySignals}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[FILES]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Telemetry.FileSignals}" />
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+
+                    <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- COLORED ASCII TELEMETRY FEED -------------------------------------------+" />
+                            <RichTextBox x:Name="TelemetryFeedBox" />
+                        </DockPanel>
+                    </Border>
+
+                    <ItemsControl Grid.Row="2" Margin="0,10,0,0" ItemsSource="{Binding Telemetry.Timeline}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource AsciiBorderStyle}">
+                                    <TextBlock>
+                                        <Run Foreground="{StaticResource CyanBrush}" Text="{Binding Label}" />
+                                        <Run Text="  info=" />
+                                        <Run Text="{Binding Info}" />
+                                        <Run Text="  warning=" />
+                                        <Run Foreground="{StaticResource OrangeBrush}" Text="{Binding Warning}" />
+                                        <Run Text="  critical=" />
+                                        <Run Foreground="{StaticResource RedBrush}" Text="{Binding Critical}" />
+                                    </TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Tools">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                <Button Margin="0,0,8,0" Command="{Binding Tools.IntegrityScanCommand}" Content="[ QUICK INTEGRITY SCAN ]" />
+                                <Button Margin="0,0,8,0" Command="{Binding Tools.StartupAuditCommand}" Content="[ STARTUP AUDIT ]" />
+                                <Button Margin="0,0,8,0" Command="{Binding Tools.JunkAnalyzeCommand}" Content="[ JUNK ANALYZE ]" />
+                                <Button Margin="0,0,8,0" Command="{Binding Tools.JunkCleanCommand}" Content="[ CLEAN SAFE JUNK ]" />
+                                <Button Command="{Binding Tools.EventReviewCommand}" Content="[ EVENT LOG 24H ]" />
+                            </StackPanel>
+                            <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Tools.Status}" />
+                        </DockPanel>
+                    </Border>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[STARTUP AUDIT]" />
+                                <DataGrid ItemsSource="{Binding Tools.StartupItems}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="70" />
+                                        <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" Width="80" />
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                                        <DataGridTextColumn Header="Executable" Binding="{Binding Executable}" Width="*" />
+                                        <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="2*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource AsciiBorderStyle}" Margin="8,0,0,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[JUNK CLEANER]" />
+                                <DataGrid ItemsSource="{Binding Tools.JunkFindings}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="90" />
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="*" />
+                                        <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="80" />
+                                        <DataGridTextColumn Header="Size" Binding="{Binding Size}" Width="110" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource AsciiBorderStyle}" Margin="0,8,0,0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[EVENT LOG HIGH-SIGNAL VIEW]" />
+                                <DataGrid ItemsSource="{Binding Tools.EventFindings}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="100" />
+                                        <DataGridTextColumn Header="Rule" Binding="{Binding Rule}" Width="*" />
+                                        <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="90" />
+                                        <DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="2*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Logs">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Foreground="{StaticResource CyanBrush}" Text="[PERSISTENT ASCII EVENT LOG]" />
+                            <ComboBox DockPanel.Dock="Right"
+                                      Width="140"
+                                      ItemsSource="{Binding Logs.SeverityFilters}"
+                                      SelectedItem="{Binding Logs.SelectedSeverityFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DockPanel>
+                    </Border>
+                    <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}">
+                        <RichTextBox x:Name="LogFeedBox" />
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="2" Style="{StaticResource AsciiBorderStyle}" Margin="0,10,0,0" Padding="8">
+            <TextBlock Foreground="{StaticResource LightGrayBrush}">
+                <Run Text="status=" />
+                <Run Foreground="{StaticResource CyanBrush}" Text="{Binding Network.Status, Mode=OneWay}" />
+                <Run Text="  network@" />
+                <Run Text="{Binding Network.LastUpdated, Mode=OneWay}" />
+                <Run Text="  posture@" />
+                <Run Text="{Binding Dashboard.LastUpdated, Mode=OneWay}" />
+            </TextBlock>
+        </Border>
+    </Grid>
+</Window>
