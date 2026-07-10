@@ -4,6 +4,7 @@ namespace TGWST.Core.Network;
 
 public enum TcpState
 {
+    Bound = 0,
     Closed = 1,
     Listen = 2,
     SynSent = 3,

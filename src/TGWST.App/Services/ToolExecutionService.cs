@@ -72,13 +72,15 @@ public sealed class ToolExecutionService
     {
         var candidates = await _junkAnalyzer.AnalyzeAsync(ct).ConfigureAwait(false);
         var rows = candidates
-            .GroupBy(candidate => candidate.Category, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(candidate => new { candidate.Kind, candidate.Category })
             .Select(group => new JunkFindingRow(
-                Category: group.Key,
+                Kind: group.Key.Kind,
+                Category: group.Key.Category,
                 Count: group.Count(),
                 Size: FormatBytes(group.Sum(item => item.SizeBytes)),
                 Risk: group.Any(item => !item.SafeToClean) ? "REVIEW" : "SAFE"))
             .OrderByDescending(row => row.Risk == "REVIEW")
+            .ThenBy(row => row.Kind, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.Category, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 

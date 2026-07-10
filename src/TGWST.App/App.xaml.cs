@@ -25,6 +25,7 @@ public partial class App : System.Windows.Application
     private ServiceProvider? _serviceProvider;
     private Forms.NotifyIcon? _trayIcon;
     private MainWindowViewModel? _mainViewModel;
+    private bool _trayMinimizeTipShown;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -73,13 +74,21 @@ public partial class App : System.Windows.Application
         services.AddSingleton<JunkAnalyzerEngine>();
         services.AddSingleton<EventLogAnalyzer>();
         services.AddSingleton<SecurityPostureService>();
+        services.AddSingleton<DashboardActionService>();
+        services.AddSingleton<ComputerCleaningService>();
+        services.AddSingleton<PortProbeService>();
+        services.AddSingleton<SuspendedProcessDetector>();
         services.AddSingleton<NetworkTelemetryService>();
+        services.AddSingleton<NetworkResponseService>();
+        services.AddSingleton<DeepNetworkAnalyzerService>();
         services.AddSingleton<SystemTelemetryService>();
         services.AddSingleton<ToolExecutionService>();
         services.AddSingleton<NetworkDashboardViewModel>();
         services.AddSingleton<TelemetryDashboardViewModel>();
         services.AddSingleton<ToolsDashboardViewModel>();
         services.AddSingleton<LogsDashboardViewModel>();
+        services.AddTransient<ComputerCleaningMultiToolViewModel>();
+        services.AddTransient<ComputerCleaningMultiToolWindow>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
     }
@@ -124,6 +133,20 @@ public partial class App : System.Windows.Application
         if (MainWindow?.WindowState == WindowState.Minimized)
         {
             MainWindow.Hide();
+            if (!_trayMinimizeTipShown && _trayIcon != null)
+            {
+                _trayMinimizeTipShown = true;
+                try
+                {
+                    _trayIcon.BalloonTipTitle = "TGWST";
+                    _trayIcon.BalloonTipText = "Minimized to tray. Double-click the tray icon to restore. Closing the window exits the app.";
+                    _trayIcon.ShowBalloonTip(4000);
+                }
+                catch
+                {
+                    // Balloon tips are best-effort; some hosts suppress them.
+                }
+            }
         }
     }
 

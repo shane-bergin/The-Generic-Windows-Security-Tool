@@ -26,21 +26,66 @@ public sealed class GuiLogService
         _logPath = Path.Combine(root, "gui-events.jsonl");
     }
 
-    public void Info(string source, string message) => Append(CyberSeverity.Info, source, message);
+    public void Info(
+        string source,
+        string message,
+        string detail = "",
+        string impact = "",
+        string recommendedAction = "",
+        string linkLabel = "",
+        string linkTarget = "") =>
+        Append(CyberSeverity.Info, source, message, detail, impact, recommendedAction, linkLabel, linkTarget);
 
-    public void Success(string source, string message) => Append(CyberSeverity.Success, source, message);
+    public void Success(
+        string source,
+        string message,
+        string detail = "",
+        string impact = "",
+        string recommendedAction = "",
+        string linkLabel = "",
+        string linkTarget = "") =>
+        Append(CyberSeverity.Success, source, message, detail, impact, recommendedAction, linkLabel, linkTarget);
 
-    public void Warning(string source, string message) => Append(CyberSeverity.Warning, source, message);
+    public void Warning(
+        string source,
+        string message,
+        string detail = "",
+        string impact = "",
+        string recommendedAction = "",
+        string linkLabel = "",
+        string linkTarget = "") =>
+        Append(CyberSeverity.Warning, source, message, detail, impact, recommendedAction, linkLabel, linkTarget);
 
-    public void Critical(string source, string message) => Append(CyberSeverity.Critical, source, message);
+    public void Critical(
+        string source,
+        string message,
+        string detail = "",
+        string impact = "",
+        string recommendedAction = "",
+        string linkLabel = "",
+        string linkTarget = "") =>
+        Append(CyberSeverity.Critical, source, message, detail, impact, recommendedAction, linkLabel, linkTarget);
 
-    public void Append(CyberSeverity severity, string source, string message)
+    public void Append(
+        CyberSeverity severity,
+        string source,
+        string message,
+        string detail = "",
+        string impact = "",
+        string recommendedAction = "",
+        string linkLabel = "",
+        string linkTarget = "")
     {
         var entry = new SecurityLogEntry(
             DateTimeOffset.Now,
             severity,
             string.IsNullOrWhiteSpace(source) ? "TGWST" : source.Trim(),
-            Sanitize(message));
+            Sanitize(message),
+            SanitizeOptional(detail),
+            SanitizeOptional(impact),
+            SanitizeOptional(recommendedAction),
+            SanitizeOptional(linkLabel),
+            SanitizeOptional(linkTarget));
 
         void AddEntry()
         {
@@ -95,5 +140,10 @@ public sealed class GuiLogService
             .Replace('\r', ' ')
             .Replace('\n', ' ')
             .Trim();
+    }
+
+    private static string SanitizeOptional(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : Sanitize(value);
     }
 }

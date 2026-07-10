@@ -1,8 +1,8 @@
-﻿<Window x:Class="TGWST.App.Views.MainWindow"
+<Window x:Class="TGWST.App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:TGWST.App.ViewModels"
-        Title="TGWST - ASCII Security Dashboard"
+        Title="TGWST"
         Icon="/Assets/generic_windows_security_tool_icon.png"
         Width="1320"
         Height="860"
@@ -18,14 +18,20 @@
 
         <Style x:Key="MetricLabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="13" />
         </Style>
 
         <Style x:Key="MetricValueStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource WhiteBrush}" />
-            <Setter Property="FontSize" Value="21" />
-            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style x:Key="WrappedGridTextStyle" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,2,0,2" />
         </Style>
 
         <Style x:Key="ThreatTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MetricValueStyle}">
@@ -39,6 +45,223 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="DetailLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,0,0,3" />
+        </Style>
+
+        <Style x:Key="DetailValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource WhiteBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,14,8" />
+        </Style>
+
+        <DataTemplate x:Key="NetworkRowDetailsTemplate">
+            <Border Background="{StaticResource PanelAltBrush}"
+                    BorderBrush="{StaticResource CyanBrush}"
+                    BorderThickness="1"
+                    Padding="12"
+                    Margin="4,8,4,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="1.6*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[PROCESS]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Process}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[PID / STATE]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}">
+                            <Run Text="{Binding ProcessId, Mode=OneWay}" />
+                            <Run Text=" / " />
+                            <Run Text="{Binding State, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[PROTOCOL / SERVICE]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding ProtocolType}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[LOCAL -> REMOTE]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}">
+                            <Run Text="{Binding Local, Mode=OneWay}" />
+                            <Run Text="  ->  " />
+                            <Run Text="{Binding Remote, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[WHY IT MATTERS]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}">
+                            <Run Text="Risk " />
+                            <Run Text="{Binding RiskScore, Mode=OneWay}" />
+                            <Run Text="/100: " />
+                            <Run Text="{Binding Risk, Mode=OneWay}" />
+                        </TextBlock>
+
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[CATEGORY]" />
+                        <TextBlock Text="{Binding Category}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource DetailValueStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Category}" Value="typicalprocess">
+                                            <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Category}" Value="PotentialC2">
+                                            <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Category}" Value="MicrosoftTelemetry">
+                                            <Setter Property="Foreground" Value="{StaticResource CyanBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[REMOTE HOST]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding RemoteHost, TargetNullValue='No reverse DNS'}" />
+
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[ANOMALY]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Anomaly, TargetNullValue='None detected'}" />
+
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[RESPONSE]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="Right-click this row to inspect or apply a verified process/IP firewall containment rule. Process termination remains staged." />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="TelemetryRowDetailsTemplate">
+            <Border Background="{StaticResource PanelAltBrush}"
+                    BorderBrush="{StaticResource CyanBrush}"
+                    BorderThickness="1"
+                    Padding="12"
+                    Margin="4,8,4,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="1.4*" />
+                        <ColumnDefinition Width="1.5*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[EVENT]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding DisplayLine}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[PROCESS / PARENT]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}">
+                            <Run Text="{Binding ProcessIdText, Mode=OneWay}" />
+                            <Run Text=" / " />
+                            <Run Text="{Binding ParentText, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[IMPACT]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Impact}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[ACTION]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding RecommendedAction}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[DETAIL]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Detail}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="LogRowDetailsTemplate">
+            <Border Background="{StaticResource PanelAltBrush}"
+                    BorderBrush="{StaticResource CyanBrush}"
+                    BorderThickness="1"
+                    Padding="12"
+                    Margin="4,8,4,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="1.4*" />
+                        <ColumnDefinition Width="1.4*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[LOG ENTRY]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding DisplayLine}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[DETAIL]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Detail}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[IMPACT]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Impact}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[RECOMMENDED ACTION]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding RecommendedAction}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PortProbeRowDetailsTemplate">
+            <Border Background="{StaticResource PanelAltBrush}"
+                    BorderBrush="{StaticResource CyanBrush}"
+                    BorderThickness="1"
+                    Padding="12"
+                    Margin="4,8,4,10">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[PROBE RESULT]" />
+                    <TextBlock Style="{StaticResource DetailValueStyle}">
+                        <Run Text="{Binding Endpoint, Mode=OneWay}" />
+                        <Run Text="  " />
+                        <Run Text="{Binding Service, Mode=OneWay}" />
+                        <Run Text="  " />
+                        <Run Text="{Binding Risk, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[DETAIL]" />
+                    <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Detail}" />
+                    <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[RECOMMENDATION]" />
+                    <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Recommendation}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DashboardFindingDetailsTemplate">
+            <Border Background="{StaticResource PanelAltBrush}"
+                    BorderBrush="{StaticResource CyanBrush}"
+                    BorderThickness="1"
+                    Padding="12"
+                    Margin="4,8,4,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.15*" />
+                        <ColumnDefinition Width="1.15*" />
+                        <ColumnDefinition Width="1.3*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[WHAT TGWST OBSERVED]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Detail}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[EVIDENCE STATE]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding EvidenceConfidence}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[WHY THIS ROW EXISTS]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding Explanation}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[POTENTIAL IMPACT]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding PotentialImpact}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[RECOMMENDED NEXT STEP]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding RecommendedAction}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[PRIVILEGE]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding ElevationText}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[CHANGE PREVIEW]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding AutomationScopeText}" />
+                        <TextBlock Style="{StaticResource DetailLabelStyle}" Text="[VERIFY]" />
+                        <TextBlock Style="{StaticResource DetailValueStyle}" Text="{Binding VerificationText}" />
+                        <Button Margin="0,4,0,0"
+                                Content="{Binding ActionButtonText}"
+                                IsEnabled="{Binding HasAutomatedAction}"
+                                Command="{Binding RelativeSource={RelativeSource AncestorType=DataGrid}, Path=Tag.RunFindingActionCommand}"
+                                CommandParameter="{Binding}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid Background="{StaticResource BlackBrush}" Margin="14">
@@ -50,16 +273,31 @@
 
         <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Left">
-                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-- TGWST :: MACHINE-AGNOSTIC GUI SECURITY DASHBOARD -------------------------+" />
-                    <TextBlock Foreground="{StaticResource LightGrayBrush}" Text="| high-signal posture | active network discovery | telemetry feed | GUI only |" />
-                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="+--------------------------------------------------------------------------+" />
-                </StackPanel>
+                <TextBlock DockPanel.Dock="Left"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource LightGrayBrush}"
+                           Text="TGWST" />
                 <Button DockPanel.Dock="Right"
                         Width="132"
                         Margin="16,0,0,0"
                         Command="{Binding RefreshCommand}"
                         Content="[ REFRESH ]" />
+                <Button DockPanel.Dock="Right"
+                        Width="132"
+                        Margin="16,0,0,0"
+                        Command="{Binding ToggleLiveRefreshCommand}"
+                        Content="{Binding LiveRefreshButtonText}"
+                        ToolTip="{Binding LiveRefreshStatus}" />
+                <TextBlock DockPanel.Dock="Right"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource LightGrayBrush}">
+                    <Run Text="score=" />
+                    <Run Foreground="{StaticResource CyanBrush}" Text="{Binding Dashboard.SecurityScore, Mode=OneWay}" />
+                    <Run Text="  signals=" />
+                    <Run Text="{Binding Dashboard.ActiveThreats, Mode=OneWay}" />
+                    <Run Text="  coverage=" />
+                    <Run Foreground="{StaticResource OrangeBrush}" Text="{Binding Dashboard.CoverageStatus, Mode=OneWay}" />
+                </TextBlock>
             </DockPanel>
         </Border>
 
@@ -72,7 +310,6 @@
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[SECURITY SCORE]" />
                                     <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.SecurityScore, StringFormat={}{0}/100}" />
-                                    <ProgressBar Margin="0,10,0,0" Maximum="100" Value="{Binding Dashboard.SecurityScore, Mode=OneWay}" />
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource MetricCardStyle}">
@@ -83,31 +320,106 @@
                             </Border>
                             <Border Style="{StaticResource MetricCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[SYSTEM INTEGRITY]" />
-                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.SystemIntegrityPercent, StringFormat={}{0}%}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
                                     <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[NETWORK EXPOSURE]" />
                                     <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.NetworkExposure}" />
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource MetricCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[LAST FULL SCAN]" />
-                                    <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="15" Text="{Binding Dashboard.LastFullScan}" />
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[HIGH-RISK SIGNALS]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.ActiveThreats}" />
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource MetricCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[ACTIVE THREATS]" />
-                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.ActiveThreats}" />
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[DEFENDER]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.DefenderRealtime}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource MetricCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[FIREWALL]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.FirewallStatusText}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource MetricCardStyle}" MinWidth="250">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[LAST DEFENDER FULL SCAN]" />
+                                    <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Dashboard.LastFullScan}" />
                                 </StackPanel>
                             </Border>
                         </WrapPanel>
 
-                        <Border Style="{StaticResource AsciiBorderStyle}" Margin="0,8,0,0">
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,8,0">
+                                <StackPanel>
+                                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-- ACTIONABLE POSTURE -----------------------------------------------------+" />
+                                    <TextBlock Margin="0,8,0,0" Foreground="{StaticResource CyanBrush}" Text="[NETWORK]" />
+                                    <TextBlock Text="{Binding Dashboard.NetworkExposureExplanation}" />
+                                    <TextBlock Margin="0,8,0,0" Foreground="{StaticResource CyanBrush}" Text="[DEFENDER]" />
+                                    <TextBlock Text="{Binding Dashboard.DefenderExplanation}" />
+                                    <TextBlock Margin="0,8,0,0" Foreground="{StaticResource CyanBrush}" Text="[ASR / FIREWALL]" />
+                                    <TextBlock Text="{Binding Dashboard.AsrExplanation}" />
+                                    <TextBlock Margin="0,4,0,0" Text="{Binding Dashboard.FirewallExplanation}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource AsciiBorderStyle}" Margin="8,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-- ONE TOUCH RESPONSE --+" />
+                                    <Button Margin="0,8,0,0" IsEnabled="False" Content="[ SECURITY BASELINE - STAGED ]" ToolTip="Unavailable: broad Defender/ASR changes need per-control preview, verification, and rollback." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ ADV FIREWALL - STAGED ]" ToolTip="Unavailable: broad localized-rule changes need stable rule identity and rollback." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ NETWORK PRIVACY - STAGED ]" ToolTip="Unavailable: proxy, network-profile, SMB, and discovery changes need preflight and rollback." />
+                                    <Button Margin="0,6,0,0" Command="{Binding Dashboard.EnableFirewallCommand}" Content="[ ENABLE FIREWALL ]" />
+                                    <Button Margin="0,6,0,0" Command="{Binding Dashboard.FirewallBaselineCommand}" Content="[ FIREWALL BASELINE ]" />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ NETWORK HARDENING - STAGED ]" ToolTip="Unavailable until signed/embedded remediation and rollback are implemented." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ BAREBONES LOCKDOWN - EXPERT ONLY ]" ToolTip="Unavailable: the current destructive workflow lacks complete automatic rollback." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ INBOUND AUDIT - STAGED ]" ToolTip="Unavailable until packaged script integrity is enforced across the elevation boundary." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ WINDOWS CVE AUDIT - STAGED ]" ToolTip="Unavailable until signed baseline data and packaged script integrity are enforced." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ CVE SAFEGUARDS - STAGED ]" ToolTip="Unavailable: broad Defender/ASR changes do not yet return verified per-control outcomes." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ SAFEGUARDS SCAN - STAGED ]" ToolTip="Unavailable: placeholder checks cannot support a verified security verdict." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ SAFEGUARDS PROFILE - STAGED ]" ToolTip="Unavailable: this profile contains advisory and placeholder controls." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ WDAC POLICY - EXPERIMENTAL ]" ToolTip="Unavailable: TGWST does not yet safely generate, deploy, recover, and verify WDAC." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ DEFENDER REALTIME - STAGED ]" ToolTip="Unavailable: this currently invokes a broader ASR profile than the label promises." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ DEFENDER CLOUD - STAGED ]" ToolTip="Unavailable: this currently invokes a broader ASR profile than the label promises." />
+                                    <Button Margin="0,6,0,0" Command="{Binding Dashboard.UpdateDefenderSignaturesCommand}" Content="[ UPDATE DEFENDER SIGNATURES ]" ToolTip="Targeted action: update security intelligence and verify readable signature state." />
+                                    <Button Margin="0,6,0,0" Command="{Binding Dashboard.RunQuickScanCommand}" Content="[ DEFENDER QUICK SCAN ]" />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ EICAR TEST - LAB / STAGED ]" ToolTip="Unavailable until packaged script integrity is enforced." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ EMERGENCY BASELINE - STAGED ]" ToolTip="Unavailable until every applied control has verified results and secured recovery data." />
+                                    <Button Margin="0,6,0,0" Command="{Binding Dashboard.DisableSmb1Command}" Content="[ DISABLE SMBV1 ]" />
+                                    <Button Margin="0,6,0,0" Command="{Binding Dashboard.LocalPortProbeCommand}" Content="[ BRIEF LOCAL PORT PROBE ]" />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ AUTO-BLOCK HEURISTIC - DISABLED ]" ToolTip="Select and inspect a specific Network row before containment." />
+                                    <Button Margin="0,6,0,0" IsEnabled="False" Content="[ AUTO-KILL HEURISTIC - DISABLED ]" ToolTip="TGWST does not destructively select a process from a heuristic score." />
+                                    <TextBlock Margin="0,10,0,0" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Dashboard.Status}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Border Style="{StaticResource AsciiBorderStyle}" Margin="0,10,0,0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- WHY THE DASHBOARD IS WARNING -------------------------------------------+" />
+                                <DataGrid Height="230"
+                                          ItemsSource="{Binding Dashboard.Findings}"
+                                          RowDetailsTemplate="{StaticResource DashboardFindingDetailsTemplate}"
+                                          RowDetailsVisibilityMode="VisibleWhenSelected"
+                                          Tag="{Binding Dashboard}"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          ToolTip="Select a finding to inspect evidence, impact, change scope, and verification.">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="100" />
+                                        <DataGridTextColumn Header="Area" Binding="{Binding Area}" Width="110" />
+                                        <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="2*" />
+                                        <DataGridTextColumn Header="Recommended Action" Binding="{Binding RecommendedAction}" Width="2*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource AsciiBorderStyle}" Margin="0,10,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -117,71 +429,148 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Foreground="{StaticResource CyanBrush}" Text="[DEFENDER]" />
                                     <TextBlock Margin="0,6,0,0" Text="{Binding Dashboard.DefenderRealtime, StringFormat=Realtime: {0}}" />
+                                    <TextBlock Margin="0,6,12,0" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Dashboard.DefenderExplanation}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Foreground="{StaticResource CyanBrush}" Text="[ASR]" />
                                     <TextBlock Margin="0,6,0,0" Text="{Binding Dashboard.AsrBlockedControls, StringFormat=Blocked Controls: {0}}" />
+                                    <TextBlock Margin="0,6,12,0" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Dashboard.AsrExplanation}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Foreground="{StaticResource CyanBrush}" Text="[FIREWALL]" />
                                     <TextBlock Margin="0,6,0,0" Text="{Binding Dashboard.VulnerableFirewallProfiles, StringFormat=Profiles Needing Review: {0}}" />
+                                    <TextBlock Margin="0,6,0,0" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Dashboard.FirewallExplanation}" />
                                 </StackPanel>
                             </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource AsciiBorderStyle}" Margin="0,10,0,0">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-- BRIEF LOCAL PORT PROBE ------------------------------------------------+" />
+                                    <TextBlock Margin="0,6,0,0" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Dashboard.PortProbeSummary}" />
+                                </StackPanel>
+                                <DataGrid MinHeight="170"
+                                          ItemsSource="{Binding Dashboard.PortProbeResults}"
+                                          RowDetailsTemplate="{StaticResource PortProbeRowDetailsTemplate}"
+                                          RowDetailsVisibilityMode="VisibleWhenSelected"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow">
+                                    <DataGrid.RowStyle>
+                                        <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                            <Setter Property="MinHeight" Value="30" />
+                                        </Style>
+                                    </DataGrid.RowStyle>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Endpoint" Binding="{Binding Endpoint, Mode=OneWay}" Width="170" />
+                                        <DataGridTextColumn Header="Service" Binding="{Binding Service}" Width="120" />
+                                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90" />
+                                        <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="80" />
+                                        <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="2*" />
+                                        <DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="2*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
             <TabItem Header="Network">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="2*" />
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <WrapPanel Grid.Row="0">
-                        <Border Style="{StaticResource MetricCardStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[CONNECTIONS]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.TotalConnections}" />
-                            </StackPanel>
-                        </Border>
                         <Border Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[INBOUND EXPOSURE]" />
                                 <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.InboundExposure}" />
                             </StackPanel>
                         </Border>
-                        <Border Style="{StaticResource MetricCardStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[OUTBOUND]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.OutboundConnections}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource MetricCardStyle}" MinWidth="260">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[BANDWIDTH]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="14" Text="{Binding Network.BandwidthStatus}" />
-                            </StackPanel>
-                        </Border>
                         <Border Style="{StaticResource MetricCardStyle}" MinWidth="260">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[FIREWALL]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="14" Text="{Binding Network.FirewallStatusText}" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.FirewallStatusText}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}" MinWidth="340">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[INBOUND WATCH]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.InboundInfraSummary}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}" MinWidth="420" MaxWidth="560">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[INSPECTED CONNECTION]" />
+                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Network.ConnectionInspection}" />
+                            </StackPanel>
+                        </Border>
+                        <!-- Profile quick actions stay limited to active TGWST posture controls. -->
+                        <Border Style="{StaticResource MetricCardStyle}" MinWidth="320" Background="{StaticResource PanelAltBrush}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[PROFILES]" />
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <Button Content="Balanced [staged]" IsEnabled="False" Padding="6,2" Margin="0,0,4,0" ToolTip="Unavailable until profile changes return verified per-control results."/>
+                                    <Button Content="Hardened [staged]" IsEnabled="False" Padding="6,2" ToolTip="Unavailable until ASR compatibility preview and rollback are implemented."/>
+                                </StackPanel>
+                                <TextBlock Foreground="{StaticResource GreenBrush}" Text="{Binding LastProfileStatus}" TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricCardStyle}" MinWidth="360" Background="{StaticResource PanelAltBrush}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[DEEP NETWORK ANALYZER]" />
+                                <Button Margin="0,6,0,0"
+                                        Padding="8,3"
+                                        Command="{Binding Network.DeepNetworkScanCommand}"
+                                        Content="[ RUN DEEP NETWORK SCAN ]" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="{StaticResource GreenBrush}"
+                                           Text="{Binding Network.DeepScanStatus}"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxWidth="330" />
                             </StackPanel>
                         </Border>
                     </WrapPanel>
 
                     <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- RISKY CONNECTIONS -------------------------------------------------------+" />
-                            <DataGrid ItemsSource="{Binding Network.RiskyConnections}">
+                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- INBOUND CONTROL TARGETS -----------------------------------------------+" />
+                            <DataGrid ItemsSource="{Binding Network.InboundActivity}"
+                                      MinHeight="190"
+                                      RowDetailsTemplate="{StaticResource NetworkRowDetailsTemplate}"
+                                      RowDetailsVisibilityMode="VisibleWhenSelected"
+                                      Tag="{Binding Network}"
+                                      SelectionMode="Single"
+                                      SelectionUnit="FullRow"
+                                      PreviewMouseRightButtonDown="NetworkGrid_OnPreviewMouseRightButtonDown">
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="[ INSPECT ]"
+                                                  Command="{Binding PlacementTarget.Tag.InspectConnectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="[ KILL PROCESS - STAGED ]"
+                                                  IsEnabled="False"
+                                                  ToolTip="Process termination remains unavailable until signer/protection checks and recovery evidence are implemented." />
+                                        <MenuItem Header="[ BLOCK PROCESS NETWORK ]"
+                                                  Command="{Binding PlacementTarget.Tag.BlockProcessCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="[ BLOCK REMOTE IP ]"
+                                                  Command="{Binding PlacementTarget.Tag.BlockRemoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
                                 <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Signal" Binding="{Binding BlueTeamSignal, Mode=OneWay}" Width="150" />
                                     <DataGridTextColumn Header="Risk" Binding="{Binding RiskScore}" Width="70" />
-                                    <DataGridTextColumn Header="Why" Binding="{Binding Risk}" Width="180" />
                                     <DataGridTextColumn Header="Process" Binding="{Binding Process}" Width="160" />
                                     <DataGridTextColumn Header="PID" Binding="{Binding ProcessId}" Width="70" />
-                                    <DataGridTextColumn Header="Proto" Binding="{Binding Protocol}" Width="70" />
+                                    <DataGridTextColumn Header="Protocol Type" Binding="{Binding ProtocolType}" Width="140" />
+                                    <DataGridTextColumn Header="Service" Binding="{Binding Service}" Width="110" />
                                     <DataGridTextColumn Header="Local" Binding="{Binding Local}" Width="*" />
                                     <DataGridTextColumn Header="Remote" Binding="{Binding Remote}" Width="*" />
                                     <DataGridTextColumn Header="State" Binding="{Binding State}" Width="110" />
@@ -192,12 +581,38 @@
 
                     <Border Grid.Row="2" Style="{StaticResource AsciiBorderStyle}">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- ACTIVE CONNECTION SAMPLE -----------------------------------------------+" />
-                            <DataGrid ItemsSource="{Binding Network.Connections}">
+                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- BLOCK / KILL CANDIDATES ------------------------------------------------+" />
+                            <DataGrid ItemsSource="{Binding Network.RiskyConnections}"
+                                      MinHeight="190"
+                                      RowDetailsTemplate="{StaticResource NetworkRowDetailsTemplate}"
+                                      RowDetailsVisibilityMode="VisibleWhenSelected"
+                                      Tag="{Binding Network}"
+                                      SelectionMode="Single"
+                                      SelectionUnit="FullRow"
+                                      PreviewMouseRightButtonDown="NetworkGrid_OnPreviewMouseRightButtonDown">
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="[ INSPECT ]"
+                                                  Command="{Binding PlacementTarget.Tag.InspectConnectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="[ KILL PROCESS - STAGED ]"
+                                                  IsEnabled="False"
+                                                  ToolTip="Process termination remains unavailable until signer/protection checks and recovery evidence are implemented." />
+                                        <MenuItem Header="[ BLOCK PROCESS NETWORK ]"
+                                                  Command="{Binding PlacementTarget.Tag.BlockProcessCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="[ BLOCK REMOTE IP ]"
+                                                  Command="{Binding PlacementTarget.Tag.BlockRemoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Process" Binding="{Binding Process}" Width="170" />
+                                    <DataGridTextColumn Header="Risk" Binding="{Binding RiskScore}" Width="70" />
+                                    <DataGridTextColumn Header="Why" Binding="{Binding Risk}" Width="180" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                    <DataGridTextColumn Header="Process" Binding="{Binding Process}" Width="160" />
                                     <DataGridTextColumn Header="PID" Binding="{Binding ProcessId}" Width="70" />
-                                    <DataGridTextColumn Header="Proto" Binding="{Binding Protocol}" Width="70" />
+                                    <DataGridTextColumn Header="Protocol Type" Binding="{Binding ProtocolType}" Width="140" />
+                                    <DataGridTextColumn Header="Service" Binding="{Binding Service}" Width="110" />
                                     <DataGridTextColumn Header="Local" Binding="{Binding Local}" Width="*" />
                                     <DataGridTextColumn Header="Remote" Binding="{Binding Remote}" Width="*" />
                                     <DataGridTextColumn Header="State" Binding="{Binding State}" Width="110" />
@@ -205,7 +620,86 @@
                             </DataGrid>
                         </DockPanel>
                     </Border>
+
+                    <Border Grid.Row="3" Style="{StaticResource AsciiBorderStyle}" Margin="0,10,0,0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-- DEEP NETWORK ANALYZER (ON-DEMAND) -------------------------------------+" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="{StaticResource LightGrayBrush}"
+                                           Text="{Binding Network.DeepScanSummary}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                            <TabControl MinHeight="310">
+                                <TabItem Header="Findings">
+                                    <DataGrid ItemsSource="{Binding Network.DeepFindings}"
+                                              MinHeight="250"
+                                              SelectionMode="Single"
+                                              SelectionUnit="FullRow">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="90" />
+                                            <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="160" />
+                                            <DataGridTextColumn Header="Subject" Binding="{Binding Subject}" Width="180" />
+                                            <DataGridTextColumn Header="Explanation" Binding="{Binding Explanation}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                            <DataGridTextColumn Header="Recommended Action" Binding="{Binding RecommendedAction}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                                <TabItem Header="Endpoints">
+                                    <DataGrid ItemsSource="{Binding Network.DeepEndpoints}"
+                                              MinHeight="250"
+                                              SelectionMode="Single"
+                                              SelectionUnit="FullRow">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Class" Binding="{Binding Classification}" Width="170" />
+                                            <DataGridTextColumn Header="Risk" Binding="{Binding RiskScore}" Width="70" />
+                                            <DataGridTextColumn Header="Process" Binding="{Binding Process}" Width="150" />
+                                            <DataGridTextColumn Header="PID" Binding="{Binding ProcessId}" Width="70" />
+                                            <DataGridTextColumn Header="Endpoint" Binding="{Binding Endpoint}" Width="150" />
+                                            <DataGridTextColumn Header="Host" Binding="{Binding RemoteHost}" Width="190" />
+                                            <DataGridTextColumn Header="DNS" Binding="{Binding DnsRecords}" Width="220" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                            <DataGridTextColumn Header="Route" Binding="{Binding Route}" Width="220" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                            <DataGridTextColumn Header="Network Owner" Binding="{Binding GeoNetwork}" Width="220" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                            <DataGridTextColumn Header="Explanation" Binding="{Binding Explanation}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                                <TabItem Header="Routes">
+                                    <DataGrid ItemsSource="{Binding Network.DeepRoutes}"
+                                              MinHeight="250"
+                                              SelectionMode="Single"
+                                              SelectionUnit="FullRow">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Destination" Binding="{Binding DestinationPrefix}" Width="150" />
+                                            <DataGridTextColumn Header="Next Hop" Binding="{Binding NextHop}" Width="140" />
+                                            <DataGridTextColumn Header="Interface" Binding="{Binding InterfaceAlias}" Width="180" />
+                                            <DataGridTextColumn Header="Route Metric" Binding="{Binding RouteMetric}" Width="100" />
+                                            <DataGridTextColumn Header="Interface Metric" Binding="{Binding InterfaceMetric}" Width="120" />
+                                            <DataGridTextColumn Header="Protocol" Binding="{Binding Protocol}" Width="100" />
+                                            <DataGridTextColumn Header="State" Binding="{Binding State}" Width="90" />
+                                            <DataGridTextColumn Header="Assessment" Binding="{Binding Assessment}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                                <TabItem Header="DNS">
+                                    <DataGrid ItemsSource="{Binding Network.DeepDnsRecords}"
+                                              MinHeight="250"
+                                              SelectionMode="Single"
+                                              SelectionUnit="FullRow">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="240" />
+                                            <DataGridTextColumn Header="Type" Binding="{Binding RecordType}" Width="90" />
+                                            <DataGridTextColumn Header="Data" Binding="{Binding Data}" Width="260" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                            <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="140" />
+                                            <DataGridTextColumn Header="Assessment" Binding="{Binding Assessment}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                            </TabControl>
+                        </DockPanel>
+                    </Border>
                 </Grid>
+                </ScrollViewer>
             </TabItem>
 
             <TabItem Header="Telemetry">
@@ -213,99 +707,105 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <WrapPanel Grid.Row="0">
-                        <Border Style="{StaticResource MetricCardStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[STATUS]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" FontSize="16" Text="{Binding Telemetry.Status}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource MetricCardStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[PROCESS]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Telemetry.ProcessSignals}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource MetricCardStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[REGISTRY]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Telemetry.RegistrySignals}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource MetricCardStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource MetricLabelStyle}" Text="[FILES]" />
-                                <TextBlock Style="{StaticResource MetricValueStyle}" Text="{Binding Telemetry.FileSignals}" />
-                            </StackPanel>
-                        </Border>
-                    </WrapPanel>
+                    <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+                        <TextBlock Foreground="{StaticResource LightGrayBrush}" Text="Only warning/critical telemetry is shown here; use One Touch Response, Network right-click actions, or Tools cleanup to act." />
+                    </Border>
 
                     <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- COLORED ASCII TELEMETRY FEED -------------------------------------------+" />
-                            <RichTextBox x:Name="TelemetryFeedBox" />
+                            <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="+-- ACTIONABLE TELEMETRY ---------------------------------------------------+" />
+                            <DataGrid ItemsSource="{Binding Telemetry.ActionableEvents}"
+                                      RowDetailsTemplate="{StaticResource TelemetryRowDetailsTemplate}"
+                                      RowDetailsVisibilityMode="VisibleWhenSelected"
+                                      SelectionMode="Single"
+                                      SelectionUnit="FullRow">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                        <Setter Property="MinHeight" Value="30" />
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Time" Binding="{Binding Time, Mode=OneWay}" Width="75" />
+                                    <DataGridTextColumn Header="Severity" Binding="{Binding SeverityLabel, Mode=OneWay}" Width="95" />
+                                    <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="90" />
+                                    <DataGridTextColumn Header="Signal" Binding="{Binding Signal}" Width="125" />
+                                    <DataGridTextColumn Header="Subject" Binding="{Binding Subject}" Width="150" />
+                                    <DataGridTextColumn Header="PID" Binding="{Binding ProcessIdText, Mode=OneWay}" Width="70" />
+                                    <DataGridTextColumn Header="Parent" Binding="{Binding ParentText, Mode=OneWay}" Width="150" />
+                                    <DataGridTextColumn Header="Impact" Binding="{Binding Impact}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                    <DataGridTextColumn Header="Action" Binding="{Binding RecommendedAction}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                    <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="3*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                    <DataGridTemplateColumn Header="Link" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="{Binding LinkText, Mode=OneWay}"
+                                                        Tag="{Binding LinkTarget}"
+                                                        IsEnabled="{Binding HasLink}"
+                                                        Click="OpenLinkedTarget_Click"
+                                                        ToolTip="Open linked target" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </DockPanel>
                     </Border>
-
-                    <ItemsControl Grid.Row="2" Margin="0,10,0,0" ItemsSource="{Binding Telemetry.Timeline}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Style="{StaticResource AsciiBorderStyle}">
-                                    <TextBlock>
-                                        <Run Foreground="{StaticResource CyanBrush}" Text="{Binding Label}" />
-                                        <Run Text="  info=" />
-                                        <Run Text="{Binding Info}" />
-                                        <Run Text="  warning=" />
-                                        <Run Foreground="{StaticResource OrangeBrush}" Text="{Binding Warning}" />
-                                        <Run Text="  critical=" />
-                                        <Run Foreground="{StaticResource RedBrush}" Text="{Binding Critical}" />
-                                    </TextBlock>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
                 </Grid>
             </TabItem>
 
             <TabItem Header="Tools">
-                <Grid Margin="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                                <Button Margin="0,0,8,0" Command="{Binding Tools.IntegrityScanCommand}" Content="[ QUICK INTEGRITY SCAN ]" />
-                                <Button Margin="0,0,8,0" Command="{Binding Tools.StartupAuditCommand}" Content="[ STARTUP AUDIT ]" />
-                                <Button Margin="0,0,8,0" Command="{Binding Tools.JunkAnalyzeCommand}" Content="[ JUNK ANALYZE ]" />
-                                <Button Margin="0,0,8,0" Command="{Binding Tools.JunkCleanCommand}" Content="[ CLEAN SAFE JUNK ]" />
-                                <Button Command="{Binding Tools.EventReviewCommand}" Content="[ EVENT LOG 24H ]" />
-                            </StackPanel>
-                            <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Tools.Status}" />
-                        </DockPanel>
-                    </Border>
-
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="8">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="220" />
+                            <RowDefinition Height="200" />
+                            <RowDefinition Height="200" />
                         </Grid.RowDefinitions>
-
-                        <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,8,8">
+                        <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[STARTUP AUDIT]" />
-                                <DataGrid ItemsSource="{Binding Tools.StartupItems}">
+                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                    <Button Margin="0,0,8,0" Command="{Binding Tools.IntegrityScanCommand}" Content="[ INTEGRITY SCAN ]" ToolTip="Runs sfc /verifyonly (read-only). May need elevation for full coverage." />
+                                    <Button Margin="0,0,8,0" Command="{Binding Tools.StartupAuditCommand}" Content="[ STARTUP AUDIT ]" />
+                                    <Button Margin="0,0,8,0" Command="{Binding Tools.EventReviewCommand}" Content="[ EVENT REVIEW ]" ToolTip="High-signal Event Log groups from the last 24 hours." />
+                                    <Button Margin="0,0,8,0" Command="{Binding Tools.JunkAnalyzeCommand}" Content="[ RESIDUE ANALYZE ]" />
+                                    <Button Margin="0,0,8,0" Command="{Binding Tools.JunkCleanCommand}" Content="[ CLEAN SAFE RESIDUE ]" />
+                                    <Button Command="{Binding Tools.OpenComputerCleaningToolCommand}" Content="[ COMPUTER CLEANER ]" />
+                                </StackPanel>
+                                <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource LightGrayBrush}" Text="{Binding Tools.Status}" />
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+                            <TextBlock Foreground="{StaticResource LightGrayBrush}" TextWrapping="Wrap"
+                                       Text="Tools stay on this machine only. Residue cleanup confirms before delete. Integrity is verify-only. Startup and event lists are read-only audits." />
+                        </Border>
+
+                        <Border Grid.Row="2" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[CLEANABLE REGISTRY / TEMP / APPDATA RESIDUE]" />
+                                <DataGrid ItemsSource="{Binding Tools.JunkFindings}" MinHeight="150">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="70" />
-                                        <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" Width="80" />
-                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                                        <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="90" />
+                                        <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="130" />
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="*" />
+                                        <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="80" />
+                                        <DataGridTextColumn Header="Size" Binding="{Binding Size}" Width="120" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="3" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[STARTUP RUN KEY AUDIT]" />
+                                <DataGrid ItemsSource="{Binding Tools.StartupItems}" MinHeight="140">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="90" />
+                                        <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" Width="100" />
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="140" />
                                         <DataGridTextColumn Header="Executable" Binding="{Binding Executable}" Width="*" />
                                         <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="2*" />
                                     </DataGrid.Columns>
@@ -313,35 +813,21 @@
                             </DockPanel>
                         </Border>
 
-                        <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource AsciiBorderStyle}" Margin="8,0,0,8">
+                        <Border Grid.Row="4" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[JUNK CLEANER]" />
-                                <DataGrid ItemsSource="{Binding Tools.JunkFindings}">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="90" />
-                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="*" />
-                                        <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="80" />
-                                        <DataGridTextColumn Header="Size" Binding="{Binding Size}" Width="110" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </DockPanel>
-                        </Border>
-
-                        <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource AsciiBorderStyle}" Margin="0,8,0,0">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[EVENT LOG HIGH-SIGNAL VIEW]" />
-                                <DataGrid ItemsSource="{Binding Tools.EventFindings}">
+                                <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource CyanBrush}" Margin="0,0,0,8" Text="[EVENT LOG 24H HIGH-SIGNAL]" />
+                                <DataGrid ItemsSource="{Binding Tools.EventFindings}" MinHeight="140">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="100" />
                                         <DataGridTextColumn Header="Rule" Binding="{Binding Rule}" Width="*" />
-                                        <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="90" />
+                                        <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="80" />
                                         <DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="2*" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </DockPanel>
                         </Border>
                     </Grid>
-                </Grid>
+                </ScrollViewer>
             </TabItem>
 
             <TabItem Header="Logs">
@@ -352,7 +838,7 @@
                     </Grid.RowDefinitions>
                     <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Left" Foreground="{StaticResource CyanBrush}" Text="[PERSISTENT ASCII EVENT LOG]" />
+                            <TextBlock DockPanel.Dock="Left" Foreground="{StaticResource CyanBrush}" Text="[ACTIONABLE EVENT LOG]" />
                             <ComboBox DockPanel.Dock="Right"
                                       Width="140"
                                       ItemsSource="{Binding Logs.SeverityFilters}"
@@ -360,7 +846,38 @@
                         </DockPanel>
                     </Border>
                     <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}">
-                        <RichTextBox x:Name="LogFeedBox" />
+                        <DataGrid x:Name="LogGrid"
+                                  ItemsSource="{Binding Logs.FilteredEntries}"
+                                  RowDetailsTemplate="{StaticResource LogRowDetailsTemplate}"
+                                  RowDetailsVisibilityMode="VisibleWhenSelected"
+                                  SelectionMode="Single"
+                                  SelectionUnit="FullRow">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                    <Setter Property="MinHeight" Value="30" />
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Time" Binding="{Binding Time, Mode=OneWay}" Width="75" />
+                                <DataGridTextColumn Header="Severity" Binding="{Binding SeverityLabel, Mode=OneWay}" Width="95" />
+                                <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="100" />
+                                <DataGridTextColumn Header="Event" Binding="{Binding Message}" Width="220" />
+                                <DataGridTextColumn Header="Impact" Binding="{Binding Impact}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                <DataGridTextColumn Header="Action" Binding="{Binding RecommendedAction}" Width="2*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="3*" ElementStyle="{StaticResource WrappedGridTextStyle}" />
+                                <DataGridTemplateColumn Header="Link" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding LinkText, Mode=OneWay}"
+                                                    Tag="{Binding LinkTarget}"
+                                                    IsEnabled="{Binding HasLink}"
+                                                    Click="OpenLinkedTarget_Click"
+                                                    ToolTip="Open linked target" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </Border>
                 </Grid>
             </TabItem>

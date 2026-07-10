@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TGWST.Core", "src\TGWST.Cor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TGWST.App", "src\TGWST.App\TGWST.App.csproj", "{9C5B1B8B-1F1B-4F1B-9C5B-1B8B1F1B4F1B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TGWST.Tests", "tests\TGWST.Tests\TGWST.Tests.csproj", "{A6F9E0A8-8C56-4F24-A2C7-9F842DAB760E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,5 +22,9 @@ Global
 		{9C5B1B8B-1F1B-4F1B-9C5B-1B8B1F1B4F1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9C5B1B8B-1F1B-4F1B-9C5B-1B8B1F1B4F1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9C5B1B8B-1F1B-4F1B-9C5B-1B8B1F1B4F1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6F9E0A8-8C56-4F24-A2C7-9F842DAB760E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6F9E0A8-8C56-4F24-A2C7-9F842DAB760E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6F9E0A8-8C56-4F24-A2C7-9F842DAB760E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6F9E0A8-8C56-4F24-A2C7-9F842DAB760E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

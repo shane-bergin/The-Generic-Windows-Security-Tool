@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
+using System.Diagnostics;
 using System.Windows;
-using System.Windows.Documents;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using TGWST.App.ViewModels;
 
@@ -29,11 +30,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        _viewModel.Telemetry.Events.CollectionChanged += TelemetryEventsChanged;
-        _viewModel.Logs.Entries.CollectionChanged += LogEntriesChanged;
+        _viewModel.Logs.FilteredEntries.CollectionChanged += LogEntriesChanged;
         _viewModel.Logs.PropertyChanged += LogsPropertyChanged;
-        RenderTelemetry();
-        RenderLogs();
         await _viewModel.StartAsync();
     }
 
@@ -44,75 +42,77 @@ public partial class MainWindow : Window
             return;
         }
 
-        _viewModel.Telemetry.Events.CollectionChanged -= TelemetryEventsChanged;
-        _viewModel.Logs.Entries.CollectionChanged -= LogEntriesChanged;
+        _viewModel.Logs.FilteredEntries.CollectionChanged -= LogEntriesChanged;
         _viewModel.Logs.PropertyChanged -= LogsPropertyChanged;
         _viewModel.Dispose();
     }
 
-    private void TelemetryEventsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RenderTelemetry();
-
-    private void LogEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e) => RenderLogs();
+    private void LogEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (LogGrid.Items.Count > 0)
+        {
+            LogGrid.ScrollIntoView(LogGrid.Items[^1]);
+        }
+    }
 
     private void LogsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(LogsDashboardViewModel.SelectedSeverityFilter))
         {
-            RenderLogs();
+            LogEntriesChanged(sender, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
     }
 
-    private void RenderTelemetry()
+    private void OpenLinkedTarget_Click(object sender, RoutedEventArgs e)
     {
-        if (_viewModel == null)
+        if (sender is not System.Windows.Controls.Button { Tag: string target } || string.IsNullOrWhiteSpace(target))
         {
             return;
         }
 
-        TelemetryFeedBox.Document.Blocks.Clear();
-        foreach (var entry in _viewModel.Telemetry.Events.Take(220).Reverse())
+        try
         {
-            AppendRun(TelemetryFeedBox.Document, entry.DisplayLine, entry.Severity);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = target,
+                UseShellExecute = true
+            });
         }
-
-        TelemetryFeedBox.ScrollToEnd();
+        catch
+        {
+        }
     }
 
-    private void RenderLogs()
+    private void NetworkGrid_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (_viewModel == null)
+        if (sender is not DataGrid grid)
         {
             return;
         }
 
-        LogFeedBox.Document.Blocks.Clear();
-        foreach (var entry in _viewModel.Logs.FilteredEntries.TakeLast(500))
+        var row = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject);
+        if (row == null)
         {
-            AppendRun(LogFeedBox.Document, entry.DisplayLine, entry.Severity);
+            grid.SelectedItem = null;
+            return;
         }
 
-        LogFeedBox.ScrollToEnd();
+        row.IsSelected = true;
+        grid.SelectedItem = row.Item;
     }
 
-    private static void AppendRun(FlowDocument document, string text, CyberSeverity severity)
+    private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
     {
-        var paragraph = new Paragraph
+        while (child != null)
         {
-            Margin = new Thickness(0, 0, 0, 2),
-            LineHeight = 16
-        };
-        paragraph.Inlines.Add(new Run(text) { Foreground = BrushFor(severity) });
-        document.Blocks.Add(paragraph);
-    }
+            if (child is T match)
+            {
+                return match;
+            }
 
-    private static System.Windows.Media.Brush BrushFor(CyberSeverity severity)
-    {
-        return severity switch
-        {
-            CyberSeverity.Success => System.Windows.Media.Brushes.White,
-            CyberSeverity.Warning => (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("OrangeBrush"),
-            CyberSeverity.Critical => (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("RedBrush"),
-            _ => (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("CyanBrush")
-        };
+            child = VisualTreeHelper.GetParent(child);
+        }
+
+        return null;
     }
 }

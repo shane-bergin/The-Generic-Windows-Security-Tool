@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <TGWSTVersion>10.0.225.61305</TGWSTVersion>
+    <Version>$(TGWSTVersion)</Version>
+    <AssemblyVersion>$(TGWSTVersion)</AssemblyVersion>
+    <FileVersion>$(TGWSTVersion)</FileVersion>
+    <InformationalVersion>$(TGWSTVersion)</InformationalVersion>
+    <Product>The Generic Windows Security Tool</Product>
+    <Company>TGWST</Company>
+    <Authors>TGWST</Authors>
+    <Description>Windows security auditing and hardening dashboard for Microsoft Defender, firewall, update, WDAC, BitLocker, telemetry, and related safeguards.</Description>
+    <Copyright>Copyright (c) 2026 TGWST</Copyright>
+    <RepositoryUrl>https://github.com/shane-bergin/The-Generic-Windows-Security-Tool</RepositoryUrl>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="TGWST.Tests" />
+  </ItemGroup>
+</Project>

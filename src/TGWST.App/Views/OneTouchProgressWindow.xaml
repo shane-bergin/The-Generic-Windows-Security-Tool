@@ -1,0 +1,99 @@
+<Window x:Class="TGWST.App.Views.OneTouchProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding WindowTitle}"
+        Icon="/Assets/generic_windows_security_tool_icon.png"
+        Width="720"
+        Height="500"
+        MinWidth="620"
+        MinHeight="430"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner">
+    <Grid Background="{StaticResource BlackBrush}" Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-- ONE TOUCH RESPONSE PROGRESS ------------------------------------------+" />
+                <TextBlock Margin="0,6,0,0"
+                           Foreground="{StaticResource LightGrayBrush}"
+                           Text="{Binding ActionName}" />
+                <TextBlock Foreground="{StaticResource CyanBrush}" Text="+-------------------------------------------------------------------------+" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource AsciiBorderStyle}" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="64" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           Foreground="{StaticResource LightGrayBrush}"
+                           Text="{Binding CurrentOperation}" />
+                <TextBlock Grid.Row="0"
+                           Grid.Column="1"
+                           HorizontalAlignment="Right"
+                           Foreground="{StaticResource CyanBrush}"
+                           Text="{Binding PercentText}" />
+                <ProgressBar Grid.Row="1"
+                             Grid.ColumnSpan="2"
+                             Margin="0,10,0,0"
+                             Minimum="0"
+                             Maximum="100"
+                             IsIndeterminate="{Binding IsRunning}"
+                             Value="{Binding Percent}" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource AsciiBorderStyle}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top"
+                           Foreground="{StaticResource CyanBrush}"
+                           Margin="0,0,0,8"
+                           Text="[ACTION TRACE]" />
+                <ItemsControl ItemsSource="{Binding Steps}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource PanelAltBrush}"
+                                    BorderThickness="0,0,0,1"
+                                    Padding="0,7">
+                                <StackPanel>
+                                    <TextBlock Foreground="{StaticResource WhiteBrush}" Text="{Binding Line}" />
+                                    <TextBlock Margin="18,3,0,0"
+                                               Foreground="{StaticResource LightGrayBrush}"
+                                               Text="{Binding Detail}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="3" Style="{StaticResource AsciiBorderStyle}" Margin="0,10,0,0">
+            <DockPanel>
+                <Button DockPanel.Dock="Right"
+                        Width="110"
+                        Margin="12,0,0,0"
+                        IsEnabled="{Binding CanClose}"
+                        Click="Close_Click"
+                        Content="[ CLOSE ]" />
+                <TextBlock Foreground="{StaticResource LightGrayBrush}"
+                           VerticalAlignment="Center"
+                           Text="{Binding Result}" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

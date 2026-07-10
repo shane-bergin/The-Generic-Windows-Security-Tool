@@ -16,7 +16,7 @@ internal static class StartupLogger
     {
         _stamp = stamp ?? BuildInfo.Current;
         _logPath = ResolveLogPath();
-        Log("startup", $"app start; version={_stamp.Version}");
+        Log("startup", $"app start; version={_stamp.DisplayVersion}");
     }
 
     public static void LogMilestone(string message) => Log("milestone", message);
@@ -28,7 +28,7 @@ internal static class StartupLogger
     {
         try
         {
-            var line = $"{DateTimeOffset.UtcNow:O}\t{category}\t{_stamp.Version}\t{message}";
+            var line = $"{DateTimeOffset.UtcNow:O}\t{category}\t{_stamp.DisplayVersion}\t{message}";
             lock (Gate)
             {
                 File.AppendAllText(LogPath, line + Environment.NewLine, Encoding.UTF8);

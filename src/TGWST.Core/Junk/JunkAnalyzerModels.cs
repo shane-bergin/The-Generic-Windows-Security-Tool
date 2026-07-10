@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.Win32;
 
 namespace TGWST.Core.Junk
 {
@@ -11,7 +12,13 @@ namespace TGWST.Core.Junk
         DateTime LastModified,
         string Category,
         string Reason,
-        bool SafeToClean);
+        bool SafeToClean,
+        RegistryHive? RegistryHive = null,
+        RegistryView? RegistryView = null,
+        string? RegistrySubKey = null,
+        string? RegistryValueName = null,
+        string? RegistryValueData = null,
+        RegistryValueKind? RegistryValueKind = null);
 
     public sealed record JunkCleanupItemResult(
         string Path,

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace TGWST.Core.Network
@@ -20,81 +20,97 @@ namespace TGWST.Core.Network
     {
         public async Task<IReadOnlyList<FirewallProfileStatus>> GetStatusAsync()
         {
-            var output = await RunNetshAsync("advfirewall", "show", "allprofiles");
+            var output = await RunPowerShellAsync();
             return Parse(output);
         }
 
-        private static async Task<string> RunNetshAsync(params string[] args)
+        private static async Task<string> RunPowerShellAsync()
         {
             return await Task.Run(() =>
             {
+                const string script = "@(Get-NetFirewallProfile -PolicyStore ActiveStore -ErrorAction Stop | ForEach-Object { [pscustomobject]@{ Name = [string]$_.Name; Enabled = [bool]$_.Enabled; DefaultInboundAction = [string]$_.DefaultInboundAction; DefaultOutboundAction = [string]$_.DefaultOutboundAction } }) | ConvertTo-Json -Compress";
                 var psi = new ProcessStartInfo
                 {
-                    FileName = Path.Combine(Environment.SystemDirectory, "netsh.exe"),
+                    FileName = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe"),
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
+                psi.ArgumentList.Add("-NoLogo");
+                psi.ArgumentList.Add("-NoProfile");
+                psi.ArgumentList.Add("-NonInteractive");
+                psi.ArgumentList.Add("-Command");
+                psi.ArgumentList.Add(script);
 
-                foreach (var arg in args)
-                {
-                    psi.ArgumentList.Add(arg);
-                }
-
-                using var p = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start netsh.");
+                using var p = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start Windows PowerShell for firewall posture collection.");
                 var stdout = p.StandardOutput.ReadToEnd();
                 var stderr = p.StandardError.ReadToEnd();
                 p.WaitForExit();
                 if (p.ExitCode != 0)
                 {
                     var error = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
-                    throw new InvalidOperationException($"netsh failed: {error}");
+                    throw new InvalidOperationException($"Get-NetFirewallProfile failed: {Trim(error)}");
                 }
+
                 return stdout;
             });
         }
 
-        private static IReadOnlyList<FirewallProfileStatus> Parse(string output)
+        internal static IReadOnlyList<FirewallProfileStatus> Parse(string output)
         {
             var result = new List<FirewallProfileStatus>();
-            var sections = Regex.Split(output, @"\r?\n(?=[A-Za-z]+ Profile Settings)", RegexOptions.Multiline)
-                                .Where(s => s.Contains("Profile Settings", StringComparison.OrdinalIgnoreCase));
-
-            foreach (var section in sections)
+            if (string.IsNullOrWhiteSpace(output))
             {
-                var lines = section.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                var header = lines.FirstOrDefault(l => l.Contains("Profile Settings", StringComparison.OrdinalIgnoreCase)) ?? "Profile";
-                var profile = header.Replace("Profile Settings", "", StringComparison.OrdinalIgnoreCase).Trim();
-                var state = ExtractValue(lines, "State") ?? "Unknown";
-                var policy = ExtractValue(lines, "Firewall Policy") ?? "Unknown";
+                throw new InvalidOperationException("Get-NetFirewallProfile returned no data.");
+            }
 
-                var inboundBlocked = policy.Contains("BlockInbound", StringComparison.OrdinalIgnoreCase);
-                var outboundAllowed = policy.Contains("AllowOutbound", StringComparison.OrdinalIgnoreCase);
-                var enabled = state.Equals("ON", StringComparison.OrdinalIgnoreCase);
-                var vulnerable = !(enabled && inboundBlocked && outboundAllowed);
-
+            using var document = JsonDocument.Parse(output);
+            var profiles = document.RootElement.ValueKind == JsonValueKind.Array
+                ? document.RootElement.EnumerateArray().ToArray()
+                : [document.RootElement];
+            foreach (var profile in profiles)
+            {
+                var name = ReadString(profile, "Name") ?? "Unknown";
+                var enabled = ReadBool(profile, "Enabled");
+                var inbound = ReadString(profile, "DefaultInboundAction") ?? "Unknown";
+                var outbound = ReadString(profile, "DefaultOutboundAction") ?? "Unknown";
+                var inboundBlocked = inbound.Equals("Block", StringComparison.OrdinalIgnoreCase) || inbound.Equals("4", StringComparison.Ordinal);
                 result.Add(new FirewallProfileStatus
                 {
-                    Profile = string.IsNullOrWhiteSpace(profile) ? "Unknown" : profile,
-                    State = state,
-                    Policy = policy,
-                    IsVulnerable = vulnerable
+                    Profile = name,
+                    State = enabled switch { true => "ON", false => "OFF", null => "UNKNOWN" },
+                    Policy = $"{inbound}Inbound,{outbound}Outbound",
+                    IsVulnerable = enabled != true || !inboundBlocked
                 });
+            }
+
+            if (result.Count == 0)
+            {
+                throw new InvalidOperationException("Get-NetFirewallProfile returned no profile records.");
             }
 
             return result;
         }
 
-        private static string? ExtractValue(IEnumerable<string> lines, string key)
+        private static string? ReadString(JsonElement element, string name)
         {
-            foreach (var line in lines)
-            {
-                if (!line.TrimStart().StartsWith(key, StringComparison.OrdinalIgnoreCase)) continue;
-                var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 2) return parts[^1];
-            }
-            return null;
+            return element.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String
+                ? property.GetString()
+                : null;
+        }
+
+        private static bool? ReadBool(JsonElement element, string name)
+        {
+            return element.TryGetProperty(name, out var property) && property.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? property.GetBoolean()
+                : null;
+        }
+
+        private static string Trim(string value)
+        {
+            var normalized = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return normalized.Length <= 220 ? normalized : normalized[..220];
         }
     }
 }

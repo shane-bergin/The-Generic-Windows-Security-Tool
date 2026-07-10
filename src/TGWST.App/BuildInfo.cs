@@ -29,11 +29,12 @@ internal static class BuildInfo
 
     private static BuildStamp Load()
     {
-        var exePath = Environment.ProcessPath
-            ?? Process.GetCurrentProcess().MainModule?.FileName
-            ?? Assembly.GetExecutingAssembly().Location;
+        var processPath = Environment.ProcessPath
+            ?? Process.GetCurrentProcess().MainModule?.FileName;
+        var assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-        var version = TryGetFileVersion(exePath)
+        var version = TryGetOwnProcessVersion(processPath)
+            ?? (string.IsNullOrWhiteSpace(assemblyPath) ? null : TryGetFileVersion(assemblyPath))
             ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
             ?? "unknown";
 
@@ -62,6 +63,22 @@ internal static class BuildInfo
         }
 
         return null;
+    }
+
+    private static string? TryGetOwnProcessVersion(string? processPath)
+    {
+        if (string.IsNullOrWhiteSpace(processPath))
+        {
+            return null;
+        }
+
+        var fileName = Path.GetFileNameWithoutExtension(processPath);
+        if (!string.Equals(fileName, "TGWST", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return TryGetFileVersion(processPath);
     }
 
     private static Dictionary<string, string> TryReadStamp(string path)
